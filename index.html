@@ -601,37 +601,60 @@ async function fetchData() {
 // ── PARSE RAW DATA ────────────────────────────────────────────────────────────
 function parseRawData(rows) {
   return rows
-    .filter(r => r && r[0] && r[1])
+    .filter((r, i) => i > 0 && r && r[0] && r[1])
     .map(r => {
       const [tanggal, waktu, m1, m2, s1, s2] = r;
       const dt = parseDateTime(tanggal, waktu);
-      return { dt, tanggal, waktu, m1: parseFloat(m1)||0, m2: parseFloat(m2)||0, s1: s1||'OFF', s2: s2||'OFF' };
+      return { dt, m1: parseFloat(m1)||0, m2: parseFloat(m2)||0, s1: (s1||'').toString().trim()||'OFF', s2: (s2||'').toString().trim()||'OFF' };
     })
-    .filter(r => r.dt)
+    .filter(r => r.dt && !isNaN(r.dt.getTime()))
     .sort((a, b) => a.dt - b.dt);
 }
 
 function parseDateTime(tgl, wkt) {
   try {
-    const s = (tgl + '').trim();
-    const w = (wkt + '').trim();
-    let dateStr = '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      dateStr = s;
-    } else if (s.includes('/')) {
-      const parts = s.split('/');
+    let date, hours = 0, minutes = 0, seconds = 0;
+
+    // Parse tanggal — bisa ISO datetime "2026-05-07T17:00:00.000Z" atau string biasa
+    if (typeof tgl === 'string' && tgl.includes('T')) {
+      // ISO datetime dari Apps Script — ambil bagian tanggal saja, pakai UTC+7
+      const d = new Date(tgl);
+      // Koreksi ke WIB (UTC+7)
+      const wib = new Date(d.getTime() + 7 * 3600 * 1000);
+      date = new Date(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate());
+    } else if (typeof tgl === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tgl.trim())) {
+      const [y,m,d] = tgl.trim().split('-');
+      date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+    } else if (typeof tgl === 'string' && tgl.includes('/')) {
+      const parts = tgl.trim().split('/');
       if (parts[0].length === 4) {
-        dateStr = parts[0] + '-' + parts[1].padStart(2,'0') + '-' + parts[2].padStart(2,'0');
+        date = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
       } else {
-        const [d,m,y] = parts;
-        const yr = y.length === 2 ? '20' + y : y;
-        dateStr = yr + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+        date = new Date(parseInt(parts[2].length===2?'20'+parts[2]:parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
       }
     } else {
-      dateStr = s;
+      return null;
     }
-    const dt = new Date(dateStr + 'T' + w);
-    return isNaN(dt.getTime()) ? null : dt;
+
+    // Parse waktu — bisa ISO datetime "1899-12-30T08:52:48.000Z" atau "HH:MM:SS"
+    if (typeof wkt === 'string' && wkt.includes('T')) {
+      // Waktu dari Apps Script — ambil jam/menit/detik dari UTC
+      const w = new Date(wkt);
+      // Waktu di-encode relatif ke 1899-12-30, ambil UTC time
+      hours   = w.getUTCHours();
+      minutes = w.getUTCMinutes();
+      seconds = w.getUTCSeconds();
+    } else if (typeof wkt === 'string' && wkt.includes(':')) {
+      const parts = wkt.trim().split(':');
+      hours   = parseInt(parts[0]) || 0;
+      minutes = parseInt(parts[1]) || 0;
+      seconds = parseInt(parts[2]) || 0;
+    } else {
+      return null;
+    }
+
+    date.setHours(hours, minutes, seconds, 0);
+    return isNaN(date.getTime()) ? null : date;
   } catch { return null; }
 }
 
