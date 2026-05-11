@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panduan Instalasi — Mason Dryer Monitor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0a1a0f;
+  --bg2: #0f2318;
+  --green: #2dda6f;
+  --green-dim: #1a6b3a;
+  --green-glow: rgba(45,218,111,0.15);
+  --amber: #f5b942;
+  --text: #e8f5ec;
+  --muted: #6aaa80;
+  --dim: #2d5c3f;
+  --border: rgba(45,218,111,0.2);
+  --red: #ff6b6b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* BG texture */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(45,218,111,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 10% 80%, rgba(45,218,111,0.05) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 48px 0 40px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--green-glow);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  color: var(--green);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.hero-badge::before { content: ''; width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
+.hero h1 {
+  font-size: clamp(28px, 6vw, 42px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 12px;
+}
+.hero h1 span { color: var(--green); }
+.hero p {
+  font-size: 16px; color: var(--muted);
+  line-height: 1.6; max-width: 420px; margin: 0 auto 24px;
+}
+
+/* URL BOX */
+.url-box {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--green);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.url-box:hover { background: var(--green-glow); border-color: var(--green); }
+.url-box .copy-icon { font-size: 16px; opacity: 0.6; }
+.url-box .copied-msg {
+  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #000; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 6px; opacity: 0;
+  transition: opacity 0.2s; white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.url-box.copied .copied-msg { opacity: 1; }
+
+/* DIVIDER */
+.section-label {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px;
+}
+.section-label span {
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  white-space: nowrap;
+}
+.section-label::before, .section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* PLATFORM TABS */
+.tabs {
+  display: flex; gap: 8px; margin-bottom: 28px;
+}
+.tab {
+  flex: 1; padding: 12px;
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px; font-weight: 600;
+}
+.tab.active {
+  background: var(--green-glow);
+  border-color: var(--green);
+  color: var(--green);
+}
+.tab-emoji { font-size: 20px; display: block; margin-bottom: 4px; }
+
+/* STEPS */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: flex; gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(45,218,111,0.08);
+  animation: fadeUp 0.4s ease both;
+}
+.step:last-child { border-bottom: none; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  background: var(--green-dim);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 14px; font-weight: 700;
+  color: var(--green);
+  margin-top: 2px;
+}
+.step-content { flex: 1; }
+.step-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 6px;
+  line-height: 1.3;
+}
+.step-desc {
+  font-size: 14px; color: var(--muted); line-height: 1.6;
+}
+.step-img {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+}
+.step-img .icon {
+  width: 28px; height: 28px;
+  background: var(--green-dim);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.step-path {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px; color: var(--green);
+  background: var(--green-glow);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-top: 6px;
+  display: inline-block;
+}
+.tip {
+  background: rgba(245,185,66,0.08);
+  border: 1px solid rgba(245,185,66,0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--amber);
+  display: flex; gap: 8px;
+}
+
+/* RESULT CARD */
+.result-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 32px;
+  text-align: center;
+}
+.result-card .big-icon { font-size: 48px; margin-bottom: 12px; }
+.result-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: var(--green); }
+.result-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+.features {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-top: 16px;
+}
+.feature {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.feature .feat-icon { font-size: 18px; margin-bottom: 4px; }
+.feature .feat-title { font-weight: 600; margin-bottom: 2px; }
+.feature .feat-desc { font-size: 12px; color: var(--muted); }
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--dim);
+}
+.footer strong { color: var(--muted); }
+
+/* PLATFORM CONTENT */
+.platform-content { display: none; }
+.platform-content.active { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Panduan Instalasi</div>
+    <h1>Monitor Suhu<br><span>Mason Dryer</span><br>di HP Anda</h1>
+    <p>Ikuti langkah berikut untuk memasang aplikasi pemantau suhu pengeringan kopi di home screen HP.</p>
+    <div class="url-box" onclick="copyURL(this)">
+      <span class="copy-icon">🔗</span>
+      <span id="urlText">christiansuryo.github.io/dryer-monitor</span>
+      <div class="copied-msg">✓ Tersalin!</div>
+    </div>
+  </div>
+
+  <!-- PLATFORM SELECT -->
+  <div class="section-label"><span>Pilih tipe HP Anda</span></div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('android')">
+      <span class="tab-emoji">🤖</span>Android
+    </div>
+    <div class="tab" onclick="switchTab('iphone')">
+      <span class="tab-emoji">🍎</span>iPhone
+    </div>
+  </div>
+
+  <!-- ANDROID STEPS -->
+  <div class="platform-content active" id="tab-android">
+    <div class="steps">
+      <div class="step" style="animation-delay:0.05s">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Buka Chrome di HP Android</div>
+          <div class="step-desc">Pastikan menggunakan browser <strong>Google Chrome</strong>, bukan browser bawaan HP atau aplikasi lain.</div>
+          <div class="step-img">
+            <div class="icon">🌐</div>
+            Gunakan Google Chrome
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.1s">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Ketuk address bar dan ketik alamat berikut</div>
+          <div class="step-desc">Salin alamat di bawah, tempel di address bar Chrome, lalu tekan Enter.</div>
+          <div class="step-img" onclick="copyURL2()" style="cursor:pointer">
+            <div class="icon">📋</div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--green)">christiansuryo.github.io/dryer-monitor</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Ketuk untuk salin</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.15s">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Tunggu dashboard terbuka</div>
+          <div class="step-desc">Pastikan terkoneksi internet. Dashboard akan muncul dengan tampilan gelap bertuliskan <em>Mason Dryer — Kebun Gunung Gumitir</em>.</div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.2s">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Ketuk ikon titik tiga ⋮ di pojok kanan atas</div>
+          <div class="step-desc">Menu Chrome akan terbuka. Geser ke bawah untuk menemukan pilihan instalasi.</div>
+          <div class="step-img">
+            <div class="icon">⋮</div>
+            Tombol di pojok kanan atas Chrome
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.25s">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Pilih "Add to Home Screen" atau "Tambahkan ke layar utama"</div>
+          <div class="step-desc">Akan muncul konfirmasi nama aplikasi. Biarkan saja, lalu ketuk <strong>Tambahkan</strong> atau <strong>Add</strong>.</div>
+          <div class="tip">💡 Jika tidak muncul pilihan ini, coba scroll menu Chrome ke bawah, atau cari tulisan "Install app".</div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.3s">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <div class="step-title">Selesai! Ikon ☕ muncul di home screen</div>
+          <div class="step-desc">Cari ikon bergambar cangkir kopi di home screen HP. Ketuk untuk membuka — tampil fullscreen seperti aplikasi biasa!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IPHONE STEPS -->
+  <div class="platform-content" id="tab-iphone">
+    <div class="steps">
+      <div class="step" style="animation-delay:0.05s">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Buka Safari di iPhone</div>
+          <div class="step-desc">Fitur "Add to Home Screen" di iPhone hanya tersedia di <strong>Safari</strong>. Pastikan tidak menggunakan Chrome atau browser lain.</div>
+          <div class="step-img">
+            <div class="icon">🧭</div>
+            Gunakan Safari (bukan Chrome)
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.1s">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Ketik alamat berikut di address bar Safari</div>
+          <div class="step-desc">Ketuk address bar di bagian atas, salin dan tempel alamat ini, lalu tekan Go.</div>
+          <div class="step-img" onclick="copyURL2()" style="cursor:pointer">
+            <div class="icon">📋</div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--green)">christiansuryo.github.io/dryer-monitor</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Ketuk untuk salin</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.15s">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Tunggu dashboard terbuka sempurna</div>
+          <div class="step-desc">Pastikan halaman sudah termuat penuh dan data suhu sudah muncul sebelum lanjut ke langkah berikutnya.</div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.2s">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Ketuk ikon Share 〔⬆〕 di bagian bawah layar</div>
+          <div class="step-desc">Ikon share berbentuk kotak dengan panah ke atas, berada di tengah toolbar bawah Safari.</div>
+          <div class="step-img">
+            <div class="icon">⬆️</div>
+            Ikon Share di toolbar bawah Safari
+          </div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.25s">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Pilih "Add to Home Screen" / "Tambah ke Layar Utama"</div>
+          <div class="step-desc">Geser menu share ke bawah sampai menemukan pilihan ini. Ketuk, lalu ketuk <strong>Add</strong> di pojok kanan atas.</div>
+          <div class="tip">💡 Jika tidak langsung terlihat, geser deretan ikon di menu share ke kiri untuk mencari pilihan "Add to Home Screen".</div>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.3s">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <div class="step-title">Selesai! Ikon ☕ muncul di home screen</div>
+          <div class="step-desc">Cari ikon bergambar cangkir kopi di home screen iPhone. Ketuk untuk membuka — tampil fullscreen tanpa address bar!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-card">
+    <div class="big-icon">☕</div>
+    <h3>Setelah terpasang, Anda bisa:</h3>
+    <p>Memantau suhu pengeringan kopi robusta secara real-time langsung dari home screen HP.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="feat-icon">🟢</div>
+        <div class="feat-title">Status Live</div>
+        <div class="feat-desc">Hijau = data hari ini, mesin beroperasi</div>
+      </div>
+      <div class="feature">
+        <div class="feat-icon">🔴</div>
+        <div class="feat-title">Status Recorded</div>
+        <div class="feat-desc">Merah = data terakhir, mesin tidak aktif</div>
+      </div>
+      <div class="feature">
+        <div class="feat-icon">🔄</div>
+        <div class="feat-title">Auto-refresh</div>
+        <div class="feat-desc">Data diperbarui otomatis tiap 5 menit</div>
+      </div>
+      <div class="feature">
+        <div class="feat-icon">📶</div>
+        <div class="feat-title">Mode Offline</div>
+        <div class="feat-desc">Data terakhir tetap tampil tanpa internet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>Kebun Gunung Gumitir</strong> · PTPN XII · Mason Dryer Monitor<br>
+    Untuk bantuan teknis, hubungi administrator sistem.
+  </div>
+
+</div>
+
+<script>
+function switchTab(platform) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && platform==='android') || (i===1 && platform==='iphone'));
+  });
+  document.querySelectorAll('.platform-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + platform).classList.add('active');
+  // re-trigger animation
+  document.querySelectorAll('#tab-' + platform + ' .step').forEach((s,i) => {
+    s.style.animation = 'none';
+    setTimeout(() => { s.style.animation = ''; s.style.animationDelay = (i*0.07)+'s'; }, 10);
+  });
+}
+
+function copyURL(el) {
+  const url = 'https://christiansuryo.github.io/dryer-monitor';
+  navigator.clipboard.writeText(url).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 2000);
+  });
+}
+
+function copyURL2() {
+  const url = 'https://christiansuryo.github.io/dryer-monitor';
+  navigator.clipboard.writeText(url).then(() => {
+    alert('✓ Alamat tersalin! Tempel di address bar browser.');
+  });
+}
+</script>
+</body>
+</html>
