@@ -613,10 +613,25 @@ function parseRawData(rows) {
 
 function parseDateTime(tgl, wkt) {
   try {
-    const [d,m,y] = (typeof tgl === 'string' && tgl.includes('/'))
-      ? tgl.split('/') : (tgl+'').split('-');
-    const dateStr = y ? `${y.length===2?'20'+y:y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : tgl;
-    return new Date(`${dateStr}T${wkt}`);
+    const s = (tgl + '').trim();
+    const w = (wkt + '').trim();
+    let dateStr = '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      dateStr = s;
+    } else if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts[0].length === 4) {
+        dateStr = parts[0] + '-' + parts[1].padStart(2,'0') + '-' + parts[2].padStart(2,'0');
+      } else {
+        const [d,m,y] = parts;
+        const yr = y.length === 2 ? '20' + y : y;
+        dateStr = yr + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+      }
+    } else {
+      dateStr = s;
+    }
+    const dt = new Date(dateStr + 'T' + w);
+    return isNaN(dt.getTime()) ? null : dt;
   } catch { return null; }
 }
 
@@ -624,33 +639,43 @@ function parseDateTime(tgl, wkt) {
 function detectSessions(data) {
   const sessions = [];
   let current = null;
+  const GAP = 4 * 3600 * 1000;
+  const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
   for (let i = 0; i < data.length; i++) {
     const r = data[i];
     const active = r.s1 === 'ON' || r.s2 === 'ON';
 
     if (active && !current) {
-      current = { start: r.dt, rows: [r], label: '' };
-    } else if (active && current) {
-      const gap = r.dt - data[i-1].dt;
-      if (gap > 4 * 3600 * 1000) {
+      current = { start: r.dt, rows: [] };
+    }
+    if (current) {
+      const gap = i > 0 ? r.dt - data[i-1].dt : 0;
+      if (gap > GAP && current.rows.length > 0) {
         current.end = data[i-1].dt;
         sessions.push(current);
-        current = { start: r.dt, rows: [r], label: '' };
+        current = active ? { start: r.dt, rows: [r] } : null;
       } else {
         current.rows.push(r);
+        if (!active) {
+          const nextActive = data.slice(i+1, i+10).some(x => x.s1==='ON'||x.s2==='ON');
+          if (!nextActive) {
+            current.end = r.dt;
+            sessions.push(current);
+            current = null;
+          }
+        }
       }
-    } else if (!active && current) {
-      current.end = r.dt;
-      sessions.push(current);
-      current = null;
     }
   }
-  if (current) { current.end = current.rows[current.rows.length-1].dt; sessions.push(current); }
+  if (current && current.rows.length > 0) {
+    current.end = current.rows[current.rows.length-1].dt;
+    sessions.push(current);
+  }
 
   return sessions.slice(-CONFIG.maxSessions).map((s, i) => {
     const d = s.start;
-    s.label = `${d.getDate()}/${d.getMonth()+1} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    s.label = `${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     s.idx = i;
     return s;
   });
