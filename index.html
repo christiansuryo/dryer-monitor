@@ -732,8 +732,18 @@ function renderSession(sess) {
   const liveRow = allData[allData.length - 1] || lastRow;
   const isLatestSession = selectedSession === sessions[sessions.length - 1];
   const displayRow = isLatestSession ? liveRow : lastRow;
-  renderMasonCard(1, displayRow.m1, displayRow.s1, currentHour, rows);
-  renderMasonCard(2, displayRow.m2, displayRow.s2, currentHour, rows);
+
+  // Cek apakah data hari ini
+  const _now = new Date();
+  const _ldt = liveRow ? liveRow.dt : null;
+  const _isToday = _ldt &&
+    _ldt.getFullYear() === _now.getFullYear() &&
+    _ldt.getMonth()    === _now.getMonth() &&
+    _ldt.getDate()     === _now.getDate();
+  const showAsLive = isLatestSession && _isToday;
+
+  renderMasonCard(1, displayRow.m1, displayRow.s1, currentHour, rows, showAsLive);
+  renderMasonCard(2, displayRow.m2, displayRow.s2, currentHour, rows, showAsLive);
 
   // Summary strip
   document.getElementById('stripJam').textContent    = currentHour;
@@ -744,10 +754,32 @@ function renderSession(sess) {
   const now = new Date();
   document.getElementById('lastUpdate').textContent = 'Update: ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
 
-  // Status dot - dim if both machines OFF on latest session
-  if (isLatestSession && displayRow.s1 !== 'ON' && displayRow.s2 !== 'ON') {
-    document.getElementById('statusDot').className = 'dot offline';
-    document.getElementById('statusText').textContent = 'Mesin OFF';
+  // Status dot - Live hanya jika ada data HARI INI di spreadsheet
+  const latestDataRow = allData[allData.length - 1];
+  const latestDt = latestDataRow ? latestDataRow.dt : null;
+  const isToday = latestDt &&
+    latestDt.getFullYear() === now.getFullYear() &&
+    latestDt.getMonth()    === now.getMonth() &&
+    latestDt.getDate()     === now.getDate();
+
+  const dot  = document.getElementById('statusDot');
+  const stxt = document.getElementById('statusText');
+  const lupd = document.getElementById('lastUpdate');
+
+  if (isToday) {
+    dot.className  = 'dot online';
+    stxt.textContent = 'Live';
+    stxt.style.color = '';
+  } else {
+    dot.className  = 'dot error';
+    stxt.textContent = 'Recorded';
+    stxt.style.color = 'var(--red)';
+    // Tampilkan tanggal data terakhir
+    if (latestDt) {
+      const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+      lupd.textContent = 'Data terakhir: ' + latestDt.getDate() + ' ' + BULAN[latestDt.getMonth()] + ' ' + pad(latestDt.getHours()) + ':' + pad(latestDt.getMinutes());
+      lupd.style.color = 'var(--red)';
+    }
   }
 
   // Alert check
@@ -775,7 +807,7 @@ function phaseLabel(p) {
   return { awal:'Awal', utama:'Utama', penurunan:'Penurunan', akhir:'Akhir' }[p] || p;
 }
 
-function renderMasonCard(n, temp, status, hour, rows) {
+function renderMasonCard(n, temp, status, hour, rows, isLive = true) {
   const card  = document.getElementById('card' + n);
   const tEl   = document.getElementById('temp' + n);
   const bEl   = document.getElementById('badge' + n);
@@ -789,7 +821,11 @@ function renderMasonCard(n, temp, status, hour, rows) {
     tEl.textContent = Math.round(temp) + '°';
     tEl.className = 'mason-temp ' + tempClass(temp, status);
   } else {
-    tEl.innerHTML = '<span style="font-size:18px;letter-spacing:0;color:var(--dim)">MESIN OFF</span>';
+    if (isLive) {
+      tEl.innerHTML = '<span style="font-size:18px;letter-spacing:0;color:var(--dim)">MESIN OFF</span>';
+    } else {
+      tEl.innerHTML = Math.round(temp) + '<span style="font-size:14px;color:var(--red);margin-left:2px">°*</span>';
+    }
     tEl.className = 'mason-temp off';
   }
 
@@ -802,8 +838,18 @@ function renderMasonCard(n, temp, status, hour, rows) {
     else                     { badgeClass = 'badge-on';   badgeText = 'NORMAL ✓'; }
   }
   bEl.className = 'status-badge ' + badgeClass;
-  bEl.textContent = on ? badgeText : '● OFF';
-  pEl.textContent = on ? 'Fase ' + phaseLabel(phase) : 'Tidak beroperasi';
+  if (on) {
+    bEl.textContent = badgeText;
+    pEl.textContent = 'Fase ' + phaseLabel(phase);
+  } else if (isLive) {
+    bEl.textContent = '● OFF';
+    pEl.textContent = 'Tidak beroperasi';
+  } else {
+    bEl.style.background = 'rgba(224,90,74,0.15)';
+    bEl.style.color = 'var(--red)';
+    bEl.textContent = '● Recorded';
+    pEl.textContent = 'Suhu terakhir tercatat';
+  }
 }
 
 function checkAlerts(lastRow, hour) {
