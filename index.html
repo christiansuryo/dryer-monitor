@@ -660,47 +660,41 @@ function parseDateTime(tgl, wkt) {
 
 // ── SESSION DETECTION ─────────────────────────────────────────────────────────
 function detectSessions(data) {
-  const sessions = [];
-  let current = null;
-  const GAP = 4 * 3600 * 1000;
   const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+  const GAP = 4 * 3600 * 1000;
 
-  for (let i = 0; i < data.length; i++) {
-    const r = data[i];
-    const active = r.s1 === 'ON' || r.s2 === 'ON';
+  // Step 1: find all ON rows
+  const onRows = data.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
+  if (onRows.length === 0) return [];
 
-    if (active && !current) {
-      current = { start: r.dt, rows: [] };
-    }
-    if (current) {
-      const gap = i > 0 ? r.dt - data[i-1].dt : 0;
-      if (gap > GAP && current.rows.length > 0) {
-        current.end = data[i-1].dt;
-        sessions.push(current);
-        current = active ? { start: r.dt, rows: [r] } : null;
-      } else {
-        current.rows.push(r);
-        if (!active) {
-          const nextActive = data.slice(i+1, i+10).some(x => x.s1==='ON'||x.s2==='ON');
-          if (!nextActive) {
-            current.end = r.dt;
-            sessions.push(current);
-            current = null;
-          }
-        }
-      }
+  // Step 2: group ON rows into sessions by time gap
+  const groups = [];
+  let group = [onRows[0]];
+  for (let i = 1; i < onRows.length; i++) {
+    const gap = onRows[i].dt - onRows[i-1].dt;
+    if (gap > GAP) {
+      groups.push(group);
+      group = [onRows[i]];
+    } else {
+      group.push(onRows[i]);
     }
   }
-  if (current && current.rows.length > 0) {
-    current.end = current.rows[current.rows.length-1].dt;
-    sessions.push(current);
-  }
+  groups.push(group);
 
-  return sessions.slice(-CONFIG.maxSessions).map((s, i) => {
-    const d = s.start;
-    s.label = `${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    s.idx = i;
-    return s;
+  // Step 3: for each ON group, collect all data rows within that time window
+  return groups.slice(-CONFIG.maxSessions).map((g, i) => {
+    const startDt = g[0].dt;
+    const endDt   = g[g.length-1].dt;
+    // include OFF rows within the session window
+    const rows = data.filter(r => r.dt >= startDt && r.dt <= endDt);
+    const d = startDt;
+    return {
+      start: startDt,
+      end: endDt,
+      rows,
+      idx: i,
+      label: `${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    };
   });
 }
 
@@ -822,18 +816,30 @@ function checkAlerts(lastRow, hour) {
 // ── CHART ─────────────────────────────────────────────────────────────────────
 function renderChart(rows) {
   const labels = [], d1 = [], d2 = [], std_line = [];
-  const startDt = rows[0].dt;
+  const onRows = rows.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
+  if (onRows.length === 0) return;
+  const startDt = onRows[0].dt;
 
-  rows.forEach(r => {
-    const h = (r.dt - startDt) / 3600000;
-    const label = 'J' + (Math.floor(h) + 1);
-    if (r.s1 === 'ON' || r.s2 === 'ON') {
-      labels.push(label);
-      d1.push(r.s1 === 'ON' ? Math.round(r.m1 * 10) / 10 : null);
-      d2.push(r.s2 === 'ON' ? Math.round(r.m2 * 10) / 10 : null);
-      const phase = getPhase(Math.floor(h) + 1);
-      std_line.push(PTPN_STANDARD[phase].max);
-    }
+  // Bucket by whole hour
+  const hourMap = {};
+  onRows.forEach(r => {
+    const h = Math.floor((r.dt - startDt) / 3600000);
+    if (!hourMap[h]) hourMap[h] = { m1vals: [], m2vals: [], s1: r.s1, s2: r.s2 };
+    if (r.s1 === 'ON') hourMap[h].m1vals.push(r.m1);
+    if (r.s2 === 'ON') hourMap[h].m2vals.push(r.m2);
+    hourMap[h].s1 = r.s1 === 'ON' ? 'ON' : hourMap[h].s1;
+    hourMap[h].s2 = r.s2 === 'ON' ? 'ON' : hourMap[h].s2;
+  });
+
+  Object.keys(hourMap).sort((a,b)=>+a-+b).forEach(h => {
+    const hNum = parseInt(h) + 1;
+    const bkt = hourMap[h];
+    const avg1 = bkt.m1vals.length ? Math.round(bkt.m1vals.reduce((a,b)=>a+b,0)/bkt.m1vals.length*10)/10 : null;
+    const avg2 = bkt.m2vals.length ? Math.round(bkt.m2vals.reduce((a,b)=>a+b,0)/bkt.m2vals.length*10)/10 : null;
+    labels.push('J' + hNum);
+    d1.push(avg1);
+    d2.push(avg2);
+    std_line.push(PTPN_STANDARD[getPhase(hNum)].max);
   });
 
   if (tempChart) tempChart.destroy();
