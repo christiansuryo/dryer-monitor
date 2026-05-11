@@ -728,9 +728,12 @@ function renderSession(sess) {
   const totalHours = Math.round((sess.end - sess.start) / 3600000);
   const currentHour = Math.round((lastRow.dt - firstRow.dt) / 3600000) + 1;
 
-  // Mason cards
-  renderMasonCard(1, lastRow.m1, lastRow.s1, currentHour, rows);
-  renderMasonCard(2, lastRow.m2, lastRow.s2, currentHour, rows);
+  // Mason cards - gunakan data TERBARU dari seluruh data untuk status live
+  const liveRow = allData[allData.length - 1] || lastRow;
+  const isLatestSession = selectedSession === sessions[sessions.length - 1];
+  const displayRow = isLatestSession ? liveRow : lastRow;
+  renderMasonCard(1, displayRow.m1, displayRow.s1, currentHour, rows);
+  renderMasonCard(2, displayRow.m2, displayRow.s2, currentHour, rows);
 
   // Summary strip
   document.getElementById('stripJam').textContent    = currentHour;
@@ -740,6 +743,12 @@ function renderSession(sess) {
   // Last update
   const now = new Date();
   document.getElementById('lastUpdate').textContent = 'Update: ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+
+  // Status dot - dim if both machines OFF on latest session
+  if (isLatestSession && displayRow.s1 !== 'ON' && displayRow.s2 !== 'ON') {
+    document.getElementById('statusDot').className = 'dot offline';
+    document.getElementById('statusText').textContent = 'Mesin OFF';
+  }
 
   // Alert check
   checkAlerts(lastRow, currentHour);
@@ -780,7 +789,7 @@ function renderMasonCard(n, temp, status, hour, rows) {
     tEl.textContent = Math.round(temp) + '°';
     tEl.className = 'mason-temp ' + tempClass(temp, status);
   } else {
-    tEl.textContent = 'OFF';
+    tEl.innerHTML = '<span style="font-size:18px;letter-spacing:0;color:var(--dim)">MESIN OFF</span>';
     tEl.className = 'mason-temp off';
   }
 
@@ -793,8 +802,8 @@ function renderMasonCard(n, temp, status, hour, rows) {
     else                     { badgeClass = 'badge-on';   badgeText = 'NORMAL ✓'; }
   }
   bEl.className = 'status-badge ' + badgeClass;
-  bEl.textContent = badgeText;
-  pEl.textContent = on ? 'Fase ' + phaseLabel(phase) : '';
+  bEl.textContent = on ? badgeText : '● OFF';
+  pEl.textContent = on ? 'Fase ' + phaseLabel(phase) : 'Tidak beroperasi';
 }
 
 function checkAlerts(lastRow, hour) {
