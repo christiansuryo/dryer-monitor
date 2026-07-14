@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#eef6fb">
+<meta name="theme-color" content="#1c1f26">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Dryer Gumitir">
@@ -13,20 +13,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
-    --bg:       #eef6fb;
-    --bg2:      #ffffff;
-    --bg3:      #deeef7;
-    --surface:  #cce3f2;
-    --border:   rgba(30,120,180,0.18);
-    --green:    #1a6fa8;
-    --green2:   #1a7fbe;
-    --amber:    #c47c00;
-    --red:      #c0392b;
-    --blue:     #1a6fa8;
-    --text:     #0d2236;
-    --muted:    #4a7a9b;
-    --dim:      #90bcd4;
-    --card-r:   14px;
+    --bg:       #1c1f26;
+    --bg2:      #242830;
+    --bg3:      #2c3040;
+    --surface:  #353a4a;
+    --border:   rgba(255,160,50,0.22);
+    --green:    #ff9f2f;
+    --green2:   #e8870a;
+    --amber:    #ffc55a;
+    --red:      #ff5252;
+    --blue:     #5bc8fa;
+    --text:     #f0f2f5;
+    --muted:    #9aa3b8;
+    --dim:      #4a5270;
+    --card-r:   12px;
     --font:     'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
@@ -140,7 +140,7 @@
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--dim);
   }
-  .dot.online  { background: #1a7fbe; box-shadow: 0 0 0 3px rgba(26,127,190,0.25); }
+  .dot.online  { background: #ff9f2f; box-shadow: 0 0 0 3px rgba(26,127,190,0.25); }
   .dot.offline { background: var(--amber); }
   .dot.error   { background: var(--red); }
 
@@ -172,9 +172,9 @@
     width: 100%; height: 3px;
     border-radius: var(--card-r) var(--card-r) 0 0;
   }
-  .mason-card.m1::before { background: #1a7fbe; }
-  .mason-card.m2::before { background: #5ab0d8; }
-  .mason-card.active-off::before { background: #b0cfe0; }
+  .mason-card.m1::before { background: #ff9f2f; }
+  .mason-card.m2::before { background: #5bc8fa; }
+  .mason-card.active-off::before { background: #4a5270; }
 
   .mason-label { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
   .mason-temp  { font-size: 36px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; margin-bottom: 6px; }
@@ -192,8 +192,8 @@
     border-radius: 20px;
     letter-spacing: 0.3px;
   }
-  .badge-on   { background: rgba(26,127,190,0.12);  color: var(--green); }
-  .badge-off  { background: rgba(144,188,212,0.25); color: var(--dim); }
+  .badge-on   { background: rgba(255,160,50,0.15);  color: var(--green); }
+  .badge-off  { background: rgba(74,82,112,0.4); color: var(--dim); }
   .badge-warn { background: rgba(196,124,0,0.12);  color: var(--amber); }
   .badge-hot  { background: rgba(192,57,43,0.1);   color: var(--red); }
 
@@ -322,8 +322,8 @@
 
   /* ALERTS */
   .alert-banner {
-    background: rgba(192,57,43,0.08);
-    border: 1px solid rgba(192,57,43,0.3);
+    background: rgba(255,82,82,0.1);
+    border: 1px solid rgba(255,82,82,0.3);
     border-radius: 10px;
     padding: 10px 13px;
     font-size: 13px;
@@ -347,7 +347,7 @@
   .loader {
     width: 40px; height: 40px;
     border: 3px solid var(--surface);
-    border-top-color: var(--green2);
+    border-top-color: var(--green);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -355,8 +355,8 @@
 
   /* OFFLINE BADGE */
   .offline-bar {
-    background: rgba(196,124,0,0.1);
-    border-bottom: 1px solid rgba(196,124,0,0.3);
+    background: rgba(255,160,50,0.1);
+    border-bottom: 1px solid rgba(255,160,50,0.3);
     padding: 6px 16px;
     text-align: center;
     font-size: 12px; color: var(--amber);
@@ -466,7 +466,7 @@
     <div class="chart-header">
       <div class="chart-title">📈 Profil Suhu — Mason 1 &amp; 2</div>
       <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#1a7fbe"></div>M1</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff9f2f"></div>M1</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>M2</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--amber); opacity:0.6"></div>Std</div>
       </div>
@@ -954,8 +954,8 @@ function renderChart(rows) {
         {
           label: 'Mason 1',
           data: d1,
-          borderColor: '#1a7fbe',
-          backgroundColor: 'rgba(26,127,190,0.1)',
+          borderColor: '#ff9f2f',
+          backgroundColor: 'rgba(255,160,50,0.08)',
           borderWidth: 2,
           pointRadius: 2,
           fill: false,
@@ -991,11 +991,11 @@ function renderChart(rows) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#ffffff',
+          backgroundColor: '#242830',
           borderColor: 'rgba(74,180,100,0.3)',
           borderWidth: 1,
-          titleColor: '#1a2e22',
-          bodyColor: '#4a7a5a',
+          titleColor: '#f0f2f5',
+          bodyColor: '#9aa3b8',
           callbacks: {
             label: ctx => ctx.dataset.label + ': ' + (ctx.raw !== null ? ctx.raw + '°C' : '—')
           }
@@ -1003,12 +1003,12 @@ function renderChart(rows) {
       },
       scales: {
         x: {
-          ticks: { color: '#4a7a5a', font: { size: 10 }, maxTicksLimit: 8 },
-          grid: { color: 'rgba(30,120,180,0.12)' }
+          ticks: { color: '#9aa3b8', font: { size: 10 }, maxTicksLimit: 8 },
+          grid: { color: 'rgba(255,160,50,0.12)' }
         },
         y: {
-          ticks: { color: '#4a7a5a', font: { size: 10 }, callback: v => v + '°' },
-          grid: { color: 'rgba(30,120,180,0.12)' },
+          ticks: { color: '#9aa3b8', font: { size: 10 }, callback: v => v + '°' },
+          grid: { color: 'rgba(255,160,50,0.12)' },
           min: 20,
           max: 140
         }
@@ -1169,9 +1169,9 @@ if ('serviceWorker' in navigator) {
 <!-- TOAST NOTIFICATION -->
 <div id="toast" style="
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-  background: #ffffff; border: 1px solid rgba(30,120,180,0.25); box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  background: #ffffff; border: 1px solid rgba(255,160,50,0.25); box-shadow: 0 4px 20px rgba(0,0,0,0.12);
   border-radius: 100px; padding: 10px 20px;
-  font-size: 13px; font-weight: 500; color: #1a2e22;
+  font-size: 13px; font-weight: 500; color: #f0f2f5;
   display: flex; align-items: center; gap: 8px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
   transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease;
