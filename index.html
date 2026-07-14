@@ -739,10 +739,12 @@ function renderChips() {
 
 function renderSession(sess) {
   const rows = sess.rows;
+  const onRowsOnly = rows.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
   const lastRow = rows[rows.length - 1];
-  const firstRow = rows[0];
-  const totalHours = Math.round((sess.end - sess.start) / 3600000);
-  const currentHour = Math.round((lastRow.dt - firstRow.dt) / 3600000) + 1;
+  const firstOnRow = onRowsOnly.length ? onRowsOnly[0] : rows[0];
+  const lastOnRow  = onRowsOnly.length ? onRowsOnly[onRowsOnly.length - 1] : lastRow;
+  const totalHours = Math.round((lastOnRow.dt - firstOnRow.dt) / 3600000);
+  const currentHour = Math.round((lastOnRow.dt - firstOnRow.dt) / 3600000) + 1;
 
   // Mason cards - gunakan data TERBARU dari seluruh data untuk status live
   const liveRow = allData[allData.length - 1] || lastRow;
@@ -890,6 +892,8 @@ function renderChart(rows) {
   const onRows = rows.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
   if (onRows.length === 0) return;
   const startDt = onRows[0].dt;
+  // Use actual latest ON row for end
+  const endDt = onRows[onRows.length - 1].dt;
 
   // Bucket per 30 menit — setiap titik mewakili rata-rata suhu dalam 30 menit
   const BUCKET_MS = 30 * 60 * 1000; // 30 menit
