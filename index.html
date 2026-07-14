@@ -891,30 +891,40 @@ function renderChart(rows) {
   if (onRows.length === 0) return;
   const startDt = onRows[0].dt;
 
-  // Tentukan interval bucket otomatis berdasarkan durasi sesi
-  const totalMs = onRows[onRows.length-1].dt - startDt;
-  const totalHours = totalMs / 3600000;
-  // Gunakan bucket 30 menit jika sesi < 4 jam, 1 jam jika lebih
-  const bucketMs = totalHours < 4 ? 30 * 60 * 1000 : 3600000;
-  const bucketLabel = totalHours < 4 ? 30 : 60; // dalam menit
+  // Bucket per 30 menit — setiap titik mewakili rata-rata suhu dalam 30 menit
+  const BUCKET_MS = 30 * 60 * 1000; // 30 menit
 
-  const hourMap = {};
+  const bucketMap = {};
   onRows.forEach(r => {
-    const h = Math.floor((r.dt - startDt) / bucketMs);
-    if (!hourMap[h]) hourMap[h] = { m1vals: [], m2vals: [] };
-    if (r.s1 === 'ON') hourMap[h].m1vals.push(r.m1);
-    if (r.s2 === 'ON') hourMap[h].m2vals.push(r.m2);
+    const elapsedMs = r.dt - startDt;
+    const bucketIdx = Math.floor(elapsedMs / BUCKET_MS);
+    if (!bucketMap[bucketIdx]) bucketMap[bucketIdx] = { m1vals: [], m2vals: [] };
+    if (r.s1 === 'ON') bucketMap[bucketIdx].m1vals.push(r.m1);
+    if (r.s2 === 'ON') bucketMap[bucketIdx].m2vals.push(r.m2);
   });
 
-  Object.keys(hourMap).sort((a,b)=>+a-+b).forEach(h => {
-    const menit = parseInt(h) * bucketLabel;
-    const jam = Math.floor(menit / 60);
-    const sisaMenit = menit % 60;
-    const labelStr = bucketLabel === 30
-      ? (jam > 0 ? jam + 'j' + (sisaMenit > 0 ? sisaMenit + 'm' : '') : sisaMenit + 'm')
-      : 'J' + (parseInt(h) + 1);
-    const hNum = Math.ceil((menit + bucketLabel) / 60);
-    const bkt = hourMap[h];
+  const sortedKeys = Object.keys(bucketMap).map(Number).sort((a,b) => a-b);
+
+  // Isi gap bucket yang kosong di antara data agar grafik tidak putus
+  const minKey = sortedKeys[0];
+  const maxKey = sortedKeys[sortedKeys.length - 1];
+  for (let k = minKey; k <= maxKey; k++) {
+    if (!bucketMap[k]) bucketMap[k] = { m1vals: [], m2vals: [] };
+  }
+  const allKeys = Object.keys(bucketMap).map(Number).sort((a,b) => a-b);
+
+  allKeys.forEach(k => {
+    const menitMulai = k * 30;
+    const jam = Math.floor(menitMulai / 60);
+    const sisa = menitMulai % 60;
+    let labelStr;
+    if (menitMulai === 0)       labelStr = '0m';
+    else if (sisa === 0)        labelStr = jam + 'j';
+    else if (jam === 0)         labelStr = sisa + 'm';
+    else                        labelStr = jam + 'j' + sisa + 'm';
+
+    const hNum = Math.max(1, Math.ceil((menitMulai + 30) / 60));
+    const bkt  = bucketMap[k];
     const avg1 = bkt.m1vals.length ? Math.round(bkt.m1vals.reduce((a,b)=>a+b,0)/bkt.m1vals.length*10)/10 : null;
     const avg2 = bkt.m2vals.length ? Math.round(bkt.m2vals.reduce((a,b)=>a+b,0)/bkt.m2vals.length*10)/10 : null;
     labels.push(labelStr);
