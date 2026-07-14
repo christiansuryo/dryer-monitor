@@ -372,7 +372,7 @@
 <!-- HEADER -->
 <div class="header">
   <div class="header-left">
-    <div class="logo">☕</div>
+    <div class="logo">🏭</div>
     <div>
       <div class="header-title">Mason Dryer</div>
       <div class="header-sub">Kebun Gunung Gumitir</div>
@@ -653,12 +653,11 @@ function parseDateTime(tgl, wkt) {
       return null;
     }
 
-    // Parse waktu — bisa ISO datetime "1899-12-30T08:52:48.000Z" atau "HH:MM:SS"
+    // Parse waktu — bisa ISO datetime "1899-12-30T11:34:31.000Z" atau "HH:MM:SS"
     if (typeof wkt === 'string' && wkt.includes('T')) {
-      // Waktu dari Apps Script — ambil jam/menit/detik dari UTC
+      // Waktu dari Apps Script — UTC time + 7 jam untuk WIB
       const w = new Date(wkt);
-      // Waktu di-encode relatif ke 1899-12-30, ambil UTC time
-      hours   = w.getUTCHours();
+      hours   = (w.getUTCHours() + 7) % 24;
       minutes = w.getUTCMinutes();
       seconds = w.getUTCSeconds();
     } else if (typeof wkt === 'string' && wkt.includes(':')) {
@@ -892,23 +891,33 @@ function renderChart(rows) {
   if (onRows.length === 0) return;
   const startDt = onRows[0].dt;
 
-  // Bucket by whole hour
+  // Tentukan interval bucket otomatis berdasarkan durasi sesi
+  const totalMs = onRows[onRows.length-1].dt - startDt;
+  const totalHours = totalMs / 3600000;
+  // Gunakan bucket 30 menit jika sesi < 4 jam, 1 jam jika lebih
+  const bucketMs = totalHours < 4 ? 30 * 60 * 1000 : 3600000;
+  const bucketLabel = totalHours < 4 ? 30 : 60; // dalam menit
+
   const hourMap = {};
   onRows.forEach(r => {
-    const h = Math.floor((r.dt - startDt) / 3600000);
-    if (!hourMap[h]) hourMap[h] = { m1vals: [], m2vals: [], s1: r.s1, s2: r.s2 };
+    const h = Math.floor((r.dt - startDt) / bucketMs);
+    if (!hourMap[h]) hourMap[h] = { m1vals: [], m2vals: [] };
     if (r.s1 === 'ON') hourMap[h].m1vals.push(r.m1);
     if (r.s2 === 'ON') hourMap[h].m2vals.push(r.m2);
-    hourMap[h].s1 = r.s1 === 'ON' ? 'ON' : hourMap[h].s1;
-    hourMap[h].s2 = r.s2 === 'ON' ? 'ON' : hourMap[h].s2;
   });
 
   Object.keys(hourMap).sort((a,b)=>+a-+b).forEach(h => {
-    const hNum = parseInt(h) + 1;
+    const menit = parseInt(h) * bucketLabel;
+    const jam = Math.floor(menit / 60);
+    const sisaMenit = menit % 60;
+    const labelStr = bucketLabel === 30
+      ? (jam > 0 ? jam + 'j' + (sisaMenit > 0 ? sisaMenit + 'm' : '') : sisaMenit + 'm')
+      : 'J' + (parseInt(h) + 1);
+    const hNum = Math.ceil((menit + bucketLabel) / 60);
     const bkt = hourMap[h];
     const avg1 = bkt.m1vals.length ? Math.round(bkt.m1vals.reduce((a,b)=>a+b,0)/bkt.m1vals.length*10)/10 : null;
     const avg2 = bkt.m2vals.length ? Math.round(bkt.m2vals.reduce((a,b)=>a+b,0)/bkt.m2vals.length*10)/10 : null;
-    labels.push('J' + hNum);
+    labels.push(labelStr);
     d1.push(avg1);
     d2.push(avg2);
     std_line.push(PTPN_STANDARD[getPhase(hNum)].max);
