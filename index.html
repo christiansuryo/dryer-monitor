@@ -2,1181 +2,2372 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1c1f26">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Dryer Gumitir">
-<title>Mason Dryer — Gumitir</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dashboard Suhu Pengering — Mason &amp; VIS Dryer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script>
+  // Fallback ke CDN lain jika gstatic gagal load
+  if(typeof firebase === 'undefined'){
+    document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.min.js"><\/script>');
+  }
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  if(typeof firebase === 'undefined' || !firebase.database){
+    document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-database-compat.min.js"><\/script>');
+  }
+</script>
 <style>
-  :root {
-    --bg:       #1c1f26;
-    --bg2:      #242830;
-    --bg3:      #2c3040;
-    --surface:  #353a4a;
-    --border:   rgba(255,160,50,0.22);
-    --green:    #ff9f2f;
-    --green2:   #e8870a;
-    --amber:    #ffc55a;
-    --red:      #ff5252;
-    --blue:     #5bc8fa;
-    --text:     #f0f2f5;
-    --muted:    #9aa3b8;
-    --dim:      #4a5270;
-    --card-r:   12px;
-    --font:     'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f4f0;color:#1a1a18;font-size:14px;}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+header{background:#fff;border-bottom:1px solid #e0ded8;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;}
+.h-left h1{font-size:14px;font-weight:600;}
+.h-left p{font-size:11px;color:#888780;margin-top:1px;}
+.h-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.dot{width:8px;height:8px;border-radius:50%;background:#B4B2A9;display:inline-block;flex-shrink:0;}
+.dot.live{background:#639922;} .dot.err{background:#E24B4A;}
+#stxt,#lupd{font-size:11px;color:#888780;}
+#alat-badge{display:none;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;}
+button{cursor:pointer;background:#fff;border:1px solid #d3d1c7;border-radius:6px;padding:5px 11px;font-size:12px;color:#1a1a18;}
+button:hover{background:#f5f4f0;}
+.btn-blue{background:#185FA5!important;color:#fff!important;border-color:#185FA5!important;}
+.btn-brown{background:#854F0B!important;color:#fff!important;border-color:#854F0B!important;}
 
-  body {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    max-width: 430px;
-    margin: 0 auto;
-    overflow-x: hidden;
-  }
+main{max-width:1100px;margin:0 auto;padding:18px 24px;}
 
-  /* ── HEADER ── */
-  .header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px 10px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .header-left { display: flex; align-items: center; gap: 10px; }
-  .logo {
-    width: 34px; height: 34px;
-    background: var(--green2);
-    border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  .header-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
-  .header-sub   { font-size: 11px; color: var(--muted); }
-  .refresh-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
-    color: var(--green);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-    transition: background 0.15s;
-  }
-  .refresh-btn:active { background: var(--bg3); }
-  .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.ctrl{background:#fff;border:1px solid #e0ded8;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
+.ctrl label{font-size:12px;color:#5f5e5a;white-space:nowrap;}
+input[type=text],select{font-size:12px;border:1px solid #d3d1c7;border-radius:6px;padding:5px 9px;background:#fff;color:#1a1a18;outline:none;}
+#iurl{flex:1;min-width:220px;}
+#url-display{flex:1;min-width:220px;}
+#iurl{flex:1;min-width:220px;}
+.sep{width:1px;height:18px;background:#e0ded8;}
 
-  /* ── SETUP SCREEN ── */
-  #setup-screen {
-    padding: 24px 16px;
-    display: none;
-  }
-  .setup-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--card-r);
-    padding: 20px;
-  }
-  .setup-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-  .setup-card p  { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
-  .setup-label  { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
-  .setup-input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 11px 13px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: monospace;
-    margin-bottom: 14px;
-    outline: none;
-  }
-  .setup-input:focus { border-color: var(--green2); }
-  .btn-primary {
-    width: 100%;
-    background: var(--green2);
-    border: none;
-    border-radius: 11px;
-    padding: 13px;
-    color: #fff;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .btn-primary:active { background: #246335; }
+.banner{border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.b-blue{background:#E6F1FB;border:1px solid #85B7EB;}
+.b-amber{background:#FAEEDA;border:1px solid #EF9F27;}
+.b-red{background:#FCEBEB;border:1px solid #E8A0A0;flex-direction:column;align-items:flex-start;}
+.btag{font-size:11px;font-weight:600;padding:2px 9px;border-radius:4px;white-space:nowrap;}
+.btag-blue{background:#185FA5;color:#B5D4F4;}
+.btag-amber{background:#BA7517;color:#FAEEDA;}
+.btxt{font-size:12px;}
+.b-blue .btxt{color:#0C447C;} .b-amber .btxt{color:#633806;}
 
-  /* ── MAIN CONTENT ── */
-  #main-screen { padding: 14px 16px 24px; display: none; }
+/* TEST PANEL */
+#test-panel{display:none;background:#1a1a18;color:#e8e6e0;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:11px;font-family:monospace;line-height:1.8;max-height:300px;overflow-y:auto;}
 
-  /* STATUS BAR */
-  .status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
-  .last-update { font-size: 12px; color: var(--muted); }
-  .status-dot {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; color: var(--muted);
-  }
-  .dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--dim);
-  }
-  .dot.online  { background: #ff9f2f; box-shadow: 0 0 0 3px rgba(26,127,190,0.25); }
-  .dot.offline { background: var(--amber); }
-  .dot.error   { background: var(--red); }
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-bottom:12px;}
+.mc{background:#fff;border:1px solid #e0ded8;border-radius:8px;padding:11px 13px;}
+.mc-l{font-size:11px;color:#888780;margin-bottom:3px;}
+.mc-v{font-size:21px;font-weight:600;line-height:1;}
+.mc-u{font-size:11px;font-weight:400;color:#888780;}
+.mc-s{font-size:11px;color:#5f5e5a;margin-top:3px;}
+.mc-m{font-size:11px;color:#993C1D;margin-top:2px;font-weight:500;}
+.hl{border-left:3px solid #185FA5;} .hl1{border-left:3px solid #1D9E75;} .hl2{border-left:3px solid #D85A30;}
 
-  /* MASON CARDS */
-  .mason-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .mason-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--card-r);
-    padding: 14px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    position: relative;
-    overflow: hidden;
-  }
-  .mason-card:active { background: var(--bg3); }
-  .mason-card.active-on { border-color: rgba(74,180,100,0.5); }
-  .mason-card.active-off { border-color: var(--border); }
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+@media(max-width:680px){.charts-grid{grid-template-columns:1fr;}}
+.cc{background:#fff;border:1px solid #e0ded8;border-radius:10px;padding:14px;}
+.cc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-wrap:wrap;gap:5px;}
+.cc-title{font-size:13px;font-weight:600;}
+.ct1{color:#0F6E56;} .ct2{color:#993C1D;}
+.leg{display:flex;gap:10px;font-size:11px;color:#888780;}
+.leg span{display:flex;align-items:center;gap:4px;}
+.ll{width:13px;height:2px;border-radius:1px;display:inline-block;}
+.cw{position:relative;width:100%;height:220px;}
 
-  .mason-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 3px;
-    border-radius: var(--card-r) var(--card-r) 0 0;
-  }
-  .mason-card.m1::before { background: #ff9f2f; }
-  .mason-card.m2::before { background: #5bc8fa; }
-  .mason-card.active-off::before { background: #4a5270; }
+.tw{background:#fff;border:1px solid #e0ded8;border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.th{padding:9px 14px;border-bottom:1px solid #e0ded8;font-size:12px;font-weight:600;color:#5f5e5a;}
+.ts{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:6px 10px;background:#f5f4f0;font-size:11px;font-weight:600;color:#888780;border-bottom:1px solid #e0ded8;white-space:nowrap;}
+td{padding:5px 10px;border-bottom:1px solid #f0ede8;white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+.tr{text-align:right;font-variant-numeric:tabular-nums;}
+.badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;}
+.b-std{background:#E6F1FB;color:#0C447C;}
+.b-gray{background:#f5f4f0;color:#5f5e5a;}
+.b-on{background:#EAF3DE;color:#27500A;}
+.b-off{background:#f5f4f0;color:#888780;}
+.cd-row td{background:#E6F1FB!important;font-size:10px;font-weight:600;color:#0C447C;padding:3px 10px;}
 
-  .mason-label { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
-  .mason-temp  { font-size: 36px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; margin-bottom: 6px; }
-  .mason-temp.hot    { color: var(--amber); }
-  .mason-temp.normal { color: var(--text); }
-  .mason-temp.cool   { color: var(--blue); }
-  .mason-temp.off    { color: var(--dim); font-size: 24px; }
-  .mason-unit { font-size: 16px; font-weight: 400; color: var(--muted); }
+/* PRINT ONLY */
+.print-only{display:none;}
+.screen-only{display:block;}
+.chart-img{display:none;}
+.sign-section{display:none;border-top:1px solid #e0ded8;padding-top:12px;margin-top:4px;}
+.sign-grid{display:flex;}
+.sign-box{flex:1;text-align:center;padding:8px 14px;}
+.sign-line{border-top:1px solid #1a1a18;margin:38px 16px 4px;}
+.sign-lbl{font-size:11px;color:#5f5e5a;}
+.print-hdr{display:none;}
 
-  .mason-status-row { display: flex; align-items: center; justify-content: space-between; }
-  .status-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 20px;
-    letter-spacing: 0.3px;
-  }
-  .badge-on   { background: rgba(255,160,50,0.15);  color: var(--green); }
-  .badge-off  { background: rgba(74,82,112,0.4); color: var(--dim); }
-  .badge-warn { background: rgba(196,124,0,0.12);  color: var(--amber); }
-  .badge-hot  { background: rgba(192,57,43,0.1);   color: var(--red); }
+footer{text-align:center;font-size:11px;color:#B4B2A9;padding:16px;}
 
-  .mason-phase { font-size: 11px; color: var(--muted); }
+@media print{
+  @page{size:A4 portrait;margin:12mm 14mm;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body{background:#fff!important;font-size:10px;}
+  header,.ctrl,#test-panel,.b-blue,footer,#err-guide,.screen-only{display:none!important;}
+  .print-hdr{display:block!important;border-bottom:2px solid #1a1a18;padding-bottom:7px;margin-bottom:9px;}
+  .print-hdr h1{font-size:13px;font-weight:700;}
+  .print-meta{font-size:9px;color:#5f5e5a;display:flex;gap:14px;flex-wrap:wrap;margin-top:2px;}
+  main{max-width:100%!important;padding:0!important;}
+  .metric-grid{grid-template-columns:repeat(6,1fr)!important;gap:5px!important;margin-bottom:7px!important;}
+  .mc{padding:5px 7px!important;border-radius:3px!important;}
+  .mc-v{font-size:13px!important;}
+  .mc-l,.mc-s,.mc-m{font-size:8px!important;}
+  .charts-grid{grid-template-columns:1fr 1fr!important;gap:7px!important;margin-bottom:7px!important;page-break-inside:avoid;}
+  .cc{padding:7px 9px!important;border-radius:3px!important;}
+  .cc-title{font-size:10px!important;}
+  .cw{height:150px!important;}
+  .cw canvas{display:none!important;}
+  .chart-img{display:block!important;width:100%;height:150px;object-fit:fill;}
+  .tw{margin-bottom:7px!important;border-radius:3px!important;}
+  .print-only.tw{page-break-inside:auto;}
+  .th{padding:4px 9px!important;font-size:10px!important;}
+  th{padding:3px 7px!important;font-size:8.5px!important;}
+  td{padding:2px 7px!important;font-size:8.5px!important;}
+  .badge{font-size:7.5px!important;padding:1px 4px!important;}
+  .b-amber{display:flex!important;padding:5px 9px!important;margin-bottom:5px!important;}
+  .print-only{display:block!important;}
+  .sign-section{display:block!important;}
+  .page-break{page-break-before:always;}
+}
 
-  /* SUMMARY STRIP */
-  .summary-strip {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--card-r);
-    padding: 12px 14px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .strip-item { text-align: center; }
-  .strip-val { font-size: 20px; font-weight: 700; color: var(--text); }
-  .strip-key { font-size: 10px; color: var(--muted); letter-spacing: 0.3px; margin-top: 1px; }
-
-  /* SESSION FILTER */
-  .section-title { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
-
-  .session-scroll {
-    display: flex; gap: 8px;
-    overflow-x: auto; padding-bottom: 4px;
-    margin-bottom: 14px;
-    scrollbar-width: none;
-  }
-  .session-scroll::-webkit-scrollbar { display: none; }
-  .session-chip {
-    flex-shrink: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 6px 13px;
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s;
-  }
-  .session-chip.active {
-    background: var(--green2);
-    border-color: var(--green2);
-    color: #ffffff;
-    font-weight: 600;
-  }
-
-  /* CHART CARD */
-  .chart-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--card-r);
-    padding: 14px;
-    margin-bottom: 14px;
-  }
-  .chart-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .chart-title { font-size: 13px; font-weight: 600; }
-  .chart-legend { display: flex; gap: 12px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
-  .legend-dot  { width: 8px; height: 8px; border-radius: 50%; }
-
-  /* DETAIL MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(10,18,13,0.85);
-    z-index: 200;
-    align-items: flex-end;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal-sheet {
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    border-radius: 22px 22px 0 0;
-    width: 100%;
-    max-height: 88vh;
-    overflow-y: auto;
-    padding: 0 16px 32px;
-    animation: slideUp 0.25s ease;
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-handle {
-    width: 36px; height: 4px;
-    background: var(--dim);
-    border-radius: 2px;
-    margin: 12px auto 20px;
-  }
-  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-  .modal-sub   { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
-
-  .detail-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 11px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 14px;
-  }
-  .detail-row:last-child { border-bottom: none; }
-  .detail-key { color: var(--muted); }
-  .detail-val { font-weight: 600; }
-
-  .phase-table { width: 100%; margin-top: 16px; border-collapse: collapse; }
-  .phase-table th {
-    font-size: 11px; color: var(--muted); font-weight: 500;
-    text-align: left; padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .phase-table td {
-    font-size: 13px; padding: 8px 8px;
-    border-bottom: 1px solid rgba(74,180,100,0.08);
-  }
-  .modal-close {
-    width: 100%; margin-top: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 13px;
-    color: var(--muted);
-    font-size: 14px; font-weight: 500;
-    cursor: pointer;
-  }
-
-  /* ALERTS */
-  .alert-banner {
-    background: rgba(255,82,82,0.1);
-    border: 1px solid rgba(255,82,82,0.3);
-    border-radius: 10px;
-    padding: 10px 13px;
-    font-size: 13px;
-    color: #f09080;
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 14px;
-    display: none;
-  }
-  .alert-banner.show { display: flex; }
-
-  /* NEXT REFRESH */
-  .next-refresh { text-align: center; font-size: 11px; color: var(--dim); margin-top: 8px; }
-
-  /* LOADING */
-  #loading-screen {
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    min-height: 60vh;
-    gap: 16px;
-  }
-  .loader {
-    width: 40px; height: 40px;
-    border: 3px solid var(--surface);
-    border-top-color: var(--green);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  .loader-text { font-size: 14px; color: var(--muted); }
-
-  /* OFFLINE BADGE */
-  .offline-bar {
-    background: rgba(255,160,50,0.1);
-    border-bottom: 1px solid rgba(255,160,50,0.3);
-    padding: 6px 16px;
-    text-align: center;
-    font-size: 12px; color: var(--amber);
-    display: none;
-  }
-  .offline-bar.show { display: block; }
+/* TAB ALAT */
+.mode-bar{max-width:1100px;margin:14px auto 0;padding:0 24px;display:flex;gap:6px;}
+.tab{padding:7px 20px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #d3d1c7;background:#fff;color:#5f5e5a;}
+.tab.on,.tab.on:hover{background:#185FA5;color:#fff;border-color:#185FA5;}
+.ctv1{color:#7C3AED;} .ctv2{color:#0E7490;}
+.hlv1{border-left:3px solid #7C3AED;} .hlv2{border-left:3px solid #0E7490;}
+@media print{.mode-bar{display:none!important;}}
 </style>
 </head>
 <body>
 
-<div class="offline-bar" id="offlineBar">📡 Offline — menampilkan data terakhir tersimpan</div>
-
-<!-- HEADER -->
-<div class="header">
-  <div class="header-left">
-    <div class="logo">🏭</div>
-    <div>
-      <div class="header-title">Mason Dryer</div>
-      <div class="header-sub">Kebun Gunung Gumitir</div>
-    </div>
+<header>
+  <div class="h-left">
+    <h1>Dashboard Suhu Pengering — Mason &amp; VIS Dryer</h1>
+    <p>Pabrik Gugum, Kebun Gunung Gumitir &nbsp;·&nbsp; Standar acuan PTPN XII Tabel 1 &nbsp;·&nbsp; Sensor ESP32</p>
   </div>
-  <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
-      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-    </svg>
-    Refresh
-  </button>
+  <div class="h-right">
+    <span class="dot" id="dot"></span>
+    <span id="stxt">Belum terhubung</span>
+    <span id="lupd"></span>
+    <span id="alat-badge"></span>
+    <button onclick="muat()">↺ Muat ulang</button>
+    <button id="btn-history" onclick="toggleHistory()" title="Muat data dari semua tab minggu (bukan cuma minggu ini &amp; sebelumnya)">&#128340; Riwayat: OFF</button>
+    <button class="btn-brown m-only" onclick="testKoneksi()">&#128270; Test</button>
+    <button class="btn-blue m-only" onclick="cetakDashboard()">&#128438; Cetak / PDF</button>
+    <select id="sel-mesin" class="m-only" title="Pilih mesin untuk Form Excel" style="border-radius:6px;padding:4px 6px;">
+      <option value="1">Mason 1</option>
+      <option value="2">Mason 2</option>
+    </select>
+    <button class="m-only" onclick="generateExcel()" style="background:#217346;color:#fff;border-color:#217346;">&#128196; Form Excel</button>
+  </div>
+</header>
+
+<div class="mode-bar">
+  <button id="tab-mason" class="tab on" onclick="setMode('mason')">Mason Dryer</button>
+  <button id="tab-vis" class="tab" onclick="setMode('vis')">VIS Dryer</button>
 </div>
 
-<!-- SETUP SCREEN -->
-<div id="setup-screen">
-  <div style="text-align:center; padding: 32px 0 20px;">
-    <div style="font-size: 48px; margin-bottom: 12px;">🌡️</div>
-    <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px;">Selamat datang</div>
-    <div style="font-size: 14px; color: var(--muted); line-height: 1.5;">Masukkan URL Apps Script Google Spreadsheet untuk mulai memantau suhu Mason Dryer.</div>
-  </div>
-  <div class="setup-card">
-    <label class="setup-label">URL Apps Script</label>
-    <input class="setup-input" id="urlInput" type="url" placeholder="https://script.google.com/macros/s/..." />
-    <label class="setup-label">Sesi maksimal ditampilkan</label>
-    <input class="setup-input" id="maxSessionInput" type="number" value="10" min="1" max="30" style="margin-bottom: 20px;" />
-    <button class="btn-primary" onclick="saveConfig()">Simpan &amp; Mulai →</button>
-  </div>
-</div>
+<main>
 
-<!-- LOADING -->
-<div id="loading-screen">
-  <div class="loader"></div>
-  <div class="loader-text">Mengambil data...</div>
-</div>
-
-<!-- MAIN SCREEN -->
-<div id="main-screen">
-
-  <div class="status-bar">
-    <div class="last-update" id="lastUpdate">—</div>
-    <div class="status-dot"><div class="dot" id="statusDot"></div><span id="statusText">—</span></div>
-  </div>
-
-  <div class="alert-banner" id="alertBanner">
-    ⚠️ <span id="alertMsg"></span>
-  </div>
-
-  <!-- MASON CARDS -->
-  <div class="mason-grid">
-    <div class="mason-card m1 active-off" id="card1" onclick="openDetail(1)">
-      <div class="mason-label">Mason 1</div>
-      <div class="mason-temp off" id="temp1">—</div>
-      <div class="mason-status-row">
-        <span class="status-badge badge-off" id="badge1">OFF</span>
-        <span class="mason-phase" id="phase1">—</span>
-      </div>
-    </div>
-    <div class="mason-card m2 active-off" id="card2" onclick="openDetail(2)">
-      <div class="mason-label">Mason 2</div>
-      <div class="mason-temp off" id="temp2">—</div>
-      <div class="mason-status-row">
-        <span class="status-badge badge-off" id="badge2">OFF</span>
-        <span class="mason-phase" id="phase2">—</span>
+  <!-- PRINT HEADER -->
+  <div class="print-hdr">
+    <div style="display:flex;">
+      <div style="flex:1;">
+        <h1>Laporan Pemantauan Suhu Pengering Mason — Kopi Robusta</h1>
+        <div class="print-meta">
+          <span>Kebun Kopi Gunung Gumitir</span>
+          <span>Standar: PTPN XII Tabel 1</span>
+          <span>Sensor: ESP32 via Google Spreadsheet</span>
+          <span style="margin-left:auto;text-align:right;"><span id="p-sesi"></span><br><span id="p-cetak"></span><br><span id="p-tot"></span></span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- SUMMARY STRIP -->
-  <div class="summary-strip">
-    <div class="strip-item">
-      <div class="strip-val" id="stripJam">—</div>
-      <div class="strip-key">Jam ke-</div>
+<div id="mason-view">
+  <!-- KONTROL -->
+  <div class="ctrl">
+    <label>URL Apps Script:</label>
+    <div id="url-display" style="display:none;flex:1;min-width:180px;max-width:340px;background:#f5f4f0;border:1px solid #d3d1c7;border-radius:6px;padding:5px 9px;font-size:11px;color:#1a1a18;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;"></div>
+    <input type="text" id="iurl" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;min-width:180px;max-width:340px;display:none;">
+    <button id="btn-simpan" onclick="simpanURL()" style="display:none;background:#185FA5;color:#fff;border-color:#185FA5;">&#128190; Simpan</button>
+    <button id="btn-ubah" onclick="ubahURL()" style="display:none;">&#9998; Ubah</button>
+    <button id="btn-hubungkan" onclick="muat()" style="display:none;">Hubungkan</button>
+    <button class="btn-brown" onclick="testKoneksi()">&#128270; Test</button>
+    <div class="sep"></div>
+    <label>Tanggal:</label>
+    <select id="sel-tgl" onchange="ganti()"></select>
+    <div class="sep"></div>
+    <label>Fase:</label>
+    <select id="sel-fase" onchange="ganti()">
+      <option value="semua">Semua fase</option>
+      <option value="awal">Awal (Jam 1–2)</option>
+      <option value="utama">Utama (Jam 3–8)</option>
+      <option value="turun">Penurunan (Jam 9–24)</option>
+      <option value="akhir">Akhir (Jam 25–26)</option>
+    </select>
+    <div class="sep"></div>
+    <label>Auto-refresh:</label>
+    <select id="sel-ref" onchange="aturRefresh()">
+      <option value="0">Mati</option>
+      <option value="900000" selected>15 menit</option>
+      <option value="300000">5 menit</option>
+      <option value="60000">1 menit</option>
+    </select>
+  </div>
+
+  <!-- TEST PANEL -->
+  <div id="test-panel">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="color:#fff;font-weight:600;">&#128270; Log Test Koneksi</span>
+      <button onclick="document.getElementById('test-panel').style.display='none'" style="font-size:10px;padding:1px 6px;background:#444;color:#fff;border-color:#666;">&#10005;</button>
     </div>
-    <div class="strip-item">
-      <div class="strip-val" id="stripDurasi">—</div>
-      <div class="strip-key">Jam operasi</div>
+    <div id="test-log"></div>
+  </div>
+
+  <!-- ERROR GUIDE -->
+  <div id="err-guide" style="display:none;" class="banner b-red">
+    <div style="display:flex;width:100%;justify-content:space-between;align-items:center;">
+      <strong style="color:#5C1A1A;">Gagal mengambil data</strong>
+      <button onclick="document.getElementById('err-guide').style.display='none'" style="font-size:11px;">&#10005;</button>
     </div>
-    <div class="strip-item">
-      <div class="strip-val" id="stripSesi">—</div>
-      <div class="strip-key">Sesi ini</div>
+    <div id="err-msg" style="font-size:11px;font-family:monospace;background:#fff3f3;padding:5px 9px;border-radius:4px;width:100%;color:#5C1A1A;"></div>
+    <div style="font-size:11px;color:#5C1A1A;line-height:1.8;">
+      Pastikan:<br>
+      1. URL adalah Apps Script (<code>script.google.com/macros/s/.../exec</code>)<br>
+      2. Deploy sebagai <b>Web app → Anyone → Execute as Me</b><br>
+      3. Klik <b>&#128270; Test</b> untuk diagnosa detail
     </div>
   </div>
 
-  <!-- SESSION FILTER -->
-  <div class="section-title">Pilih sesi pengeringan</div>
-  <div class="session-scroll" id="sessionChips"></div>
+  <!-- FASE BANNER -->
+  <div class="banner b-blue">
+    <span class="btag btag-blue" id="fase-tag">—</span>
+    <span class="btxt" id="fase-desc">Pilih sesi pengeringan</span>
+  </div>
 
-  <!-- CHART M1 -->
-  <div class="chart-card">
-    <div class="chart-header">
-      <div class="chart-title">📈 Profil Suhu — Mason 1 &amp; 2</div>
-      <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#ff9f2f"></div>M1</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>M2</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--amber); opacity:0.6"></div>Std</div>
+  <!-- LINTAS HARI -->
+  <div class="banner b-amber" id="cd-banner" style="display:none;">
+    <span class="btag btag-amber">Lintas hari</span>
+    <span class="btxt" id="cd-txt"></span>
+  </div>
+
+  <!-- METRIK -->
+  <div class="metric-grid">
+    <div class="mc hl"><div class="mc-l">Sesi pengeringan</div><div class="mc-v" id="m-tgl" style="font-size:13px;margin-top:3px;">—</div></div>
+    <div class="mc hl1"><div class="mc-l">Jam M1</div><div class="mc-v"><span id="m1-jam">—</span><span class="mc-u"> / 26</span></div><div class="mc-s" id="m1-std">Standar: —</div></div>
+    <div class="mc hl2"><div class="mc-l">Jam M2</div><div class="mc-v"><span id="m2-jam">—</span><span class="mc-u"> / 26</span></div><div class="mc-s" id="m2-std">Standar: —</div></div>
+    <div class="mc hl1"><div class="mc-l">Mason 1 (terakhir)</div><div class="mc-v"><span id="m1v">—</span><span class="mc-u"> °C</span></div><div class="mc-s" id="m1d">vs standar: —</div><div class="mc-m" id="m1max">Maks: —</div></div>
+    <div class="mc hl2"><div class="mc-l">Mason 2 (terakhir)</div><div class="mc-v"><span id="m2v">—</span><span class="mc-u"> °C</span></div><div class="mc-s" id="m2d">vs standar: —</div><div class="mc-m" id="m2max">Maks: —</div></div>
+    <div class="mc"><div class="mc-l">Total pembacaan</div><div class="mc-v" id="mtot">—</div><div class="mc-s">Interval ESP32</div></div>
+    <div class="mc"><div class="mc-l">Durasi aktual</div><div class="mc-v" id="mdur" style="font-size:14px;margin-top:3px;">—</div></div>
+  </div>
+
+  <!-- GRAFIK -->
+  <div class="charts-grid">
+    <div class="cc">
+      <div class="cc-hdr">
+        <div class="cc-title ct1">Mason 1 — Suhu vs Standar</div>
+        <div class="leg">
+          <span><span class="ll" style="background:#185FA5;"></span>Standar</span>
+          <span><span class="ll" style="background:#1D9E75;height:3px;"></span>Mason 1 (ON)</span>
+          <span><span class="ll" style="background:#E24B4A;border-top:2px dashed #E24B4A;height:0;"></span>Maks</span>
+        </div>
       </div>
+      <div class="cw"><canvas id="c1"></canvas><img id="c1i" class="chart-img" alt="Graf M1"></div>
     </div>
-    <div style="position:relative; height: 220px;">
-      <canvas id="tempChart" role="img" aria-label="Grafik profil suhu Mason 1 dan Mason 2 selama sesi pengeringan"></canvas>
+    <div class="cc">
+      <div class="cc-hdr">
+        <div class="cc-title ct2">Mason 2 — Suhu vs Standar</div>
+        <div class="leg">
+          <span><span class="ll" style="background:#185FA5;"></span>Standar</span>
+          <span><span class="ll" style="background:#D85A30;height:3px;"></span>Mason 2 (ON)</span>
+          <span><span class="ll" style="background:#E24B4A;border-top:2px dashed #E24B4A;height:0;"></span>Maks</span>
+        </div>
+      </div>
+      <div class="cw"><canvas id="c2"></canvas><img id="c2i" class="chart-img" alt="Graf M2"></div>
     </div>
   </div>
 
-  <div class="next-refresh" id="nextRefresh">—</div>
-
-</div>
-
-<!-- DETAIL MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeDetailIfOutside(event)">
-  <div class="modal-sheet" id="modalSheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="modalTitle">Mason 1</div>
-    <div class="modal-sub" id="modalSub">Detail sesi pengeringan</div>
-
-    <div id="modalRows"></div>
-
-    <div style="margin-top:20px;">
-      <div class="section-title">Ringkasan per fase</div>
-      <table class="phase-table" id="phaseTable">
-        <thead>
-          <tr>
-            <th>Fase</th><th>Suhu Rata²</th><th>Standar</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="phaseTbody"></tbody>
+  <!-- LOG LAYAR -->
+  <div class="tw screen-only">
+    <div class="th">Log pembacaan suhu — sesi terpilih</div>
+    <div class="ts">
+      <table>
+        <thead><tr>
+          <th>Waktu</th><th class="tr">Jam ke-</th><th class="tr">Std (°C)</th>
+          <th class="tr">M1 (°C)</th><th class="tr">Δ M1</th>
+          <th class="tr">M2 (°C)</th><th class="tr">Δ M2</th>
+          <th>Sts M1</th><th>Sts M2</th><th>Fase</th>
+        </tr></thead>
+        <tbody id="log-body"></tbody>
       </table>
     </div>
-
-    <button class="modal-close" onclick="closeDetail()">✕ Tutup</button>
   </div>
-</div>
+
+  <!-- LOG CETAK (per jam) -->
+  <div class="tw print-only">
+    <div class="th">Log pengukuran suhu per jam</div>
+    <div class="ts">
+      <table>
+        <thead><tr>
+          <th>Jam ke-</th><th>Waktu</th><th>Fase</th>
+          <th class="tr">Std (°C)</th>
+          <th class="tr">Rata M1</th><th class="tr">Min M1</th><th class="tr">Maks M1</th><th class="tr">Δ M1</th>
+          <th class="tr">Rata M2</th><th class="tr">Min M2</th><th class="tr">Maks M2</th><th class="tr">Δ M2</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="plog-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TANDA TANGAN -->
+  <div class="sign-section">
+    <div class="sign-grid">
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">Operator Pengeringan</div></div>
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">Mandor / Pengawas</div></div>
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">Asisten Teknik & Pengolahan</div></div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ANALISA -->
+  <div class="tw" id="analisa-wrap">
+    <div class="th">Analisa Pengeringan — Realisasi vs Standar PTPN XII</div>
+    <div id="analisa-content" style="padding:10px 14px;font-size:12px;"></div>
+  </div>
+</div><!-- /mason-view -->
+
+<!-- ═════════════ VIS DRYER ═════════════ -->
+<div id="vis-view" style="display:none;">
+
+  <div class="ctrl">
+    <label>URL Apps Script VIS:</label>
+    <div id="url-display-v" style="display:none;flex:1;min-width:180px;max-width:340px;background:#f5f4f0;border:1px solid #d3d1c7;border-radius:6px;padding:5px 9px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+    <input type="text" id="iurl-vis" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;min-width:180px;max-width:340px;display:none;">
+    <button id="btn-simpan-v" onclick="simpanURLV()" style="display:none;background:#185FA5;color:#fff;border-color:#185FA5;">&#128190; Simpan</button>
+    <button id="btn-ubah-v" onclick="ubahURLV()" style="display:none;">&#9998; Ubah</button>
+    <div class="sep"></div>
+    <label>Tanggal:</label>
+    <select id="sel-vtgl" onchange="gantiV()"></select>
+    <div class="sep"></div>
+    <label>Grafik:</label>
+    <select id="sel-vmode" onchange="buatGrafikV(rowsV())">
+      <option value="suhu">Suhu (°C)</option>
+      <option value="pola">Pola ternormalisasi (%)</option>
+    </select>
+    <div class="sep"></div>
+    <label>Form:</label>
+    <select id="sel-vmesin">
+      <option value="1">VIS Dryer 1</option>
+      <option value="2">VIS Dryer 2</option>
+    </select>
+    <button onclick="generateExcel('vis')" style="background:#217346;color:#fff;border-color:#217346;">&#128196; Form Excel</button>
+    <div class="sep"></div>
+    <label>Auto-refresh:</label>
+    <select id="sel-ref-v" onchange="refVChange()">
+      <option value="0">Mati</option>
+      <option value="900000" selected>15 menit</option>
+      <option value="300000">5 menit</option>
+      <option value="60000">1 menit</option>
+    </select>
+  </div>
+
+  <div id="verr" style="display:none;" class="banner b-red">
+    <div style="display:flex;width:100%;justify-content:space-between;align-items:center;">
+      <strong style="color:#5C1A1A;">Gagal mengambil data VIS Dryer</strong>
+      <button onclick="document.getElementById('verr').style.display='none'" style="font-size:11px;">&#10005;</button>
+    </div>
+    <div id="verr-msg" style="font-size:11px;font-family:monospace;background:#fff3f3;padding:5px 9px;border-radius:4px;width:100%;color:#5C1A1A;"></div>
+    <div style="font-size:11px;color:#5C1A1A;line-height:1.8;">
+      Pastikan Apps Script VIS di-deploy sebagai <b>Web app → Anyone</b> dan versi terbarunya (yang mendukung <code>?action=getData</code>) sudah aktif.
+    </div>
+  </div>
+
+  <div class="banner b-blue">
+    <span class="btag btag-blue">Acuan Mason</span>
+    <span class="btxt">VIS Dryer belum punya standar suhu sendiri. Kurva standar Mason (PTPN XII) hanya dipakai sebagai pembanding bentuk dan arah tren. Tidak ada penilaian selisih suhu.</span>
+  </div>
+
+  <div class="metric-grid">
+    <div class="mc hl"><div class="mc-l">Sesi pengeringan</div><div class="mc-v" id="vtgl" style="font-size:13px;margin-top:3px;">—</div></div>
+    <div class="mc hlv1"><div class="mc-l">Jam VIS 1</div><div class="mc-v"><span id="v1-jam">—</span><span class="mc-u"> / 26</span></div><div class="mc-s" id="v1-std">Acuan Mason: —</div></div>
+    <div class="mc hlv2"><div class="mc-l">Jam VIS 2</div><div class="mc-v"><span id="v2-jam">—</span><span class="mc-u"> / 26</span></div><div class="mc-s" id="v2-std">Acuan Mason: —</div></div>
+    <div class="mc hlv1"><div class="mc-l">VIS 1 (terakhir)</div><div class="mc-v"><span id="v1v">—</span><span class="mc-u"> °C</span></div><div class="mc-s" id="v1tren">Tren 1 jam: —</div><div class="mc-m" id="v1max">Maks: —</div></div>
+    <div class="mc hlv2"><div class="mc-l">VIS 2 (terakhir)</div><div class="mc-v"><span id="v2v">—</span><span class="mc-u"> °C</span></div><div class="mc-s" id="v2tren">Tren 1 jam: —</div><div class="mc-m" id="v2max">Maks: —</div></div>
+    <div class="mc"><div class="mc-l">Total pembacaan</div><div class="mc-v" id="vtot">—</div><div class="mc-s">Interval ESP32</div></div>
+    <div class="mc"><div class="mc-l">Durasi aktual</div><div class="mc-v" id="vdur" style="font-size:14px;margin-top:3px;">—</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="cc">
+      <div class="cc-hdr">
+        <div class="cc-title ctv1">VIS 1 — Tren vs Standar Mason</div>
+        <div class="leg">
+          <span><span class="ll" style="background:#185FA5;"></span>Standar</span>
+          <span><span class="ll" style="background:#7C3AED;height:3px;"></span>VIS 1 (ON)</span>
+        </div>
+      </div>
+      <div class="cw"><canvas id="cv1"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-hdr">
+        <div class="cc-title ctv2">VIS 2 — Tren vs Standar Mason</div>
+        <div class="leg">
+          <span><span class="ll" style="background:#185FA5;"></span>Standar</span>
+          <span><span class="ll" style="background:#0E7490;height:3px;"></span>VIS 2 (ON)</span>
+        </div>
+      </div>
+      <div class="cw"><canvas id="cv2"></canvas></div>
+    </div>
+  </div>
+
+  <div class="tw">
+    <div class="th">Analisa Tren Kenaikan Suhu — VIS Dryer vs Standar Mason</div>
+    <div id="vtren-content" style="padding:10px 14px;font-size:12px;"></div>
+  </div>
+
+  <div class="tw">
+    <div class="th">Log pembacaan suhu VIS — sesi terpilih</div>
+    <div class="ts">
+      <table>
+        <thead><tr>
+          <th>Waktu</th>
+          <th class="tr">Jam V1</th><th class="tr">VIS 1 (°C)</th><th class="tr">Laju V1</th>
+          <th class="tr">Jam V2</th><th class="tr">VIS 2 (°C)</th><th class="tr">Laju V2</th>
+          <th>Sts V1</th><th>Sts V2</th><th>Fase acuan</th>
+        </tr></thead>
+        <tbody id="vlog-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /vis-view -->
+
+</main>
+<footer>Dashboard Suhu Pengering Mason &amp; VIS Dryer &nbsp;·&nbsp; Kebun Kopi Gunung Gumitir &nbsp;·&nbsp; Standar: PTPN XII Tabel 1</footer>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztFdJvrXQcoDEA3z6PZFF9ihpPIVBeP_HWMLFBA10OQl2PjDetSkR6FybKe5DD3z5tHw/exec';
-const REFRESH_INTERVAL = 5 * 60 * 1000;
-const PTPN_STANDARD = { awal: {min:35,max:50}, utama: {min:90,max:120}, penurunan: {min:60,max:90}, akhir: {min:40,max:60} };
+'use strict';
 
-let CONFIG = { url: '', maxSessions: 10 };
-let allData = [];
-let sessions = [];
-let selectedSession = null;
-let tempChart = null;
-let refreshTimer = null;
-let countdownTimer = null;
-let countdownSec = REFRESH_INTERVAL / 1000;
-let currentDetailMason = 1;
-let isOnline = navigator.onLine;
+// ── STANDAR SUHU PTPN XII ────────────────────────────────────
+const STD = [
+  {r:[1,1],  s:35,   fase:'Pemanasan awal',      ket:''},
+  {r:[2,2],  s:90,   fase:'Kenaikan suhu',        ket:''},
+  {r:[3,8],  s:120,  fase:'Pengeringan utama',    ket:'Sampai asap putih hilang'},
+  {r:[9,10], s:110,  fase:'Penurunan suhu I',     ket:''},
+  {r:[11,12],s:105,  fase:'Penurunan suhu II',    ket:''},
+  {r:[13,14],s:100,  fase:'Penurunan suhu III',   ket:''},
+  {r:[15,16],s:90,   fase:'Penurunan suhu IV',    ket:''},
+  {r:[17,19],s:80,   fase:'Pendinginan I',        ket:''},
+  {r:[20,22],s:70,   fase:'Pendinginan II',       ket:''},
+  {r:[23,24],s:60,   fase:'Pendinginan III',      ket:''},
+  {r:[25,26],s:null, fase:'Hembusan udara segar', ket:'Target kadar air ≤11,5%'},
+];
+function getStd(j){ for(const s of STD) if(j>=s.r[0]&&j<=s.r[1]) return s.s; return null; }
+function getFase(j){ for(const s of STD) if(j>=s.r[0]&&j<=s.r[1]) return s; return null; }
 
-window.addEventListener('online',  () => { isOnline = true;  updateOnlineStatus(); });
-window.addEventListener('offline', () => { isOnline = false; updateOnlineStatus(); });
-
-function updateOnlineStatus() {
-  document.getElementById('offlineBar').classList.toggle('show', !isOnline);
+// ── HELPERS ──────────────────────────────────────────────────
+function rnd(v){ return Math.round(v); }
+function p2(n){ return String(n).padStart(2,'0'); }
+function fmtTgl(d){
+  if(!d||d.length<10) return '—';
+  const p=d.split('-');
+  const nm=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return p[2]+' '+nm[parseInt(p[1])-1]+' '+p[0];
 }
+function fmtDelta(d){ if(d===null||d===undefined) return '—'; return (d>=0?'+':'')+rnd(d)+'°C'; }
+function dColor(d){ if(d===null) return 'inherit'; const a=Math.abs(d); return a<=5?'#3B6D11':a<=10?'#BA7517':'#A32D2D'; }
 
-// ── CONFIG ──────────────────────────────────────────────────────────────────
-function loadConfig() {
-  const saved = localStorage.getItem('gumitir_config');
-  if (saved) {
-    CONFIG = JSON.parse(saved);
-    if (CONFIG.url) return true;
+// ── PARSE TANGGAL & WAKTU dari Google Sheets ─────────────────
+// Google Sheets Date → ISO "2026-05-07T17:00:00.000Z" (UTC midnight = tanggal WIB)
+// Google Sheets Time → ISO "1899-12-30T08:52:48.000Z" (epoch dummy, jam valid di UTC)
+function parseTgl(raw){
+  const s = String(raw||'').trim();
+  if(!s) return '';
+  if(s.includes('T')){
+    // Geser +7 jam untuk WIB
+    const d = new Date(new Date(s).getTime() + 7*3600000);
+    return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
   }
-  return false;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
 }
-
-function saveConfig() {
-  const url = document.getElementById('urlInput').value.trim();
-  const maxS = parseInt(document.getElementById('maxSessionInput').value) || 10;
-  if (!url.startsWith('https://script.google.com')) {
-    alert('URL tidak valid. Pastikan URL berasal dari Google Apps Script.');
-    return;
+function parseWkt(raw){
+  const s = String(raw||'').trim();
+  if(!s) return '00:00';
+  if(s.includes('T')){
+    const d = new Date(s);
+    // Google Sheets Time column diexport sebagai "1899-12-30THH:MM:SS.000Z"
+    // Jam WIB yang disimpan Apps Script (misal 18:41) dikonversi Sheets ke UTC
+    // sehingga menjadi 11:41 UTC (selisih -7 jam)
+    // Solusi: tambah 7 jam untuk kembali ke WIB
+    const hWIB = (d.getUTCHours() + 7) % 24;
+    return p2(hWIB)+':'+p2(d.getUTCMinutes());
   }
-  CONFIG = { url, maxSessions: maxS };
-  localStorage.setItem('gumitir_config', JSON.stringify(CONFIG));
-  showScreen('loading');
-  fetchData();
+  // Format string biasa dari Apps Script: "18:41:43" — ambil langsung
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  return m ? p2(m[1])+':'+p2(m[2]) : '00:00';
 }
 
-function showScreen(name) {
-  document.getElementById('setup-screen').style.display   = name === 'setup'   ? 'block' : 'none';
-  document.getElementById('loading-screen').style.display = name === 'loading'  ? 'flex'  : 'none';
-  document.getElementById('main-screen').style.display    = name === 'main'     ? 'block' : 'none';
-}
+// ── PARSE JSON dari Apps Script ──────────────────────────────
+// Strategi: gabungkan tanggal+waktu sebagai pair untuk mendapat datetime WIB yang benar
+// Google Sheets kadang export waktu sebagai Date object (timezone-aware)
+// kadang sebagai string biasa — perlu normalisasi konsisten
+function parseJSON(json){
+  if(!Array.isArray(json)||json.length<2) return [];
+  const hdr = json[0].map(h=>String(h).trim().toLowerCase().replace(/\s+/g,''));
+  const fi = (...keys) => { for(const k of keys){ const i=hdr.findIndex(x=>x.includes(k)); if(i>=0) return i; } return -1; };
+  const iA = fi('tanggal','date') >= 0 ? fi('tanggal','date') : 0;
+  const iB = fi('waktu','time')   >= 0 ? fi('waktu','time')   : 1;
+  const iM1= fi('m1','mason1')    >= 0 ? fi('m1','mason1')    : 2;
+  const iM2= fi('m2','mason2')    >= 0 ? fi('m2','mason2')    : 3;
+  const iS1= fi('status1','s1')   >= 0 ? fi('status1','s1')   : 4;
+  const iS2= fi('status2','s2')   >= 0 ? fi('status2','s2')   : 5;
 
-// ── FETCH DATA ───────────────────────────────────────────────────────────────
-async function fetchData() {
-  const btn = document.getElementById('refreshBtn');
-  btn.classList.add('spinning');
-  clearTimers();
+  const rows = [];
+  for(let i=1;i<json.length;i++){
+    const row = json[i];
+    const rawTgl = row[iA];
+    const rawWkt = row[iB];
+    const wktStr = String(rawWkt||'').trim();
+    const tglStr = String(rawTgl||'').trim();
+    let tgl='', wkt='';
 
-  const url = CONFIG.url || APPS_SCRIPT_URL;
-
-  try {
-    const resp = await fetch(url + '?action=getData');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const json = await resp.json();
-    allData = parseRawData(json.data || json);
-    sessions = detectSessions(allData);
-    localStorage.setItem('gumitir_lastData', JSON.stringify({ data: allData, sessions, ts: Date.now() }));
-    setStatusOnline();
-    // Hitung data ON vs OFF
-    const totalData = allData.length;
-    const onData  = allData.filter(r => r.s1 === 'ON' || r.s2 === 'ON').length;
-    const offData = totalData - onData;
-    let toastMsg = '';
-    if (onData === 0) {
-      toastMsg = totalData + ' data di Sheet — semua saat mesin OFF, tidak ditampilkan';
-      showToast('📊', toastMsg, 'info');
-    } else if (offData > 0) {
-      toastMsg = totalData + ' data di Sheet — ' + onData + ' ON ditampilkan, ' + offData + ' OFF disembunyikan';
-      showToast('📊', toastMsg, 'success');
-    } else {
-      showToast('✅', totalData + ' data berhasil dimuat — semua saat mesin ON');
-    }
-  } catch (err) {
-    // Try cached
-    const cached = localStorage.getItem('gumitir_lastData');
-    if (cached) {
-      const c = JSON.parse(cached);
-      allData = c.data;
-      sessions = c.sessions;
-      setStatusOffline();
-      const cacheAge = Math.round((Date.now() - c.ts) / 60000);
-      showToast('📡', 'Offline — data cache ' + cacheAge + ' menit lalu', 'warn');
-    } else {
-      setStatusError(err.message);
-      showToast('❌', 'Gagal memuat data — periksa koneksi', 'error');
-      btn.classList.remove('spinning');
-      return;
-    }
-  }
-
-  if (!selectedSession && sessions.length > 0) {
-    selectedSession = sessions[sessions.length - 1];
-  }
-
-  renderAll();
-  btn.classList.remove('spinning');
-  showScreen('main');
-  startCountdown();
-}
-
-// ── PARSE RAW DATA ────────────────────────────────────────────────────────────
-function parseRawData(rows) {
-  return rows
-    .filter((r, i) => i > 0 && r && r[0] && r[1])
-    .map(r => {
-      const [tanggal, waktu, m1, m2, s1, s2] = r;
-      const dt = parseDateTime(tanggal, waktu);
-      return { dt, m1: parseFloat(m1)||0, m2: parseFloat(m2)||0, s1: (s1||'').toString().trim()||'OFF', s2: (s2||'').toString().trim()||'OFF' };
-    })
-    .filter(r => r.dt && !isNaN(r.dt.getTime()))
-    .sort((a, b) => a.dt - b.dt);
-}
-
-function parseDateTime(tgl, wkt) {
-  try {
-    let date, hours = 0, minutes = 0, seconds = 0;
-
-    // Parse tanggal — bisa ISO datetime "2026-05-07T17:00:00.000Z" atau string biasa
-    if (typeof tgl === 'string' && tgl.includes('T')) {
-      // ISO datetime dari Apps Script — ambil bagian tanggal saja, pakai UTC+7
-      const d = new Date(tgl);
-      // Koreksi ke WIB (UTC+7)
-      const wib = new Date(d.getTime() + 7 * 3600 * 1000);
-      date = new Date(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate());
-    } else if (typeof tgl === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tgl.trim())) {
-      const [y,m,d] = tgl.trim().split('-');
-      date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
-    } else if (typeof tgl === 'string' && tgl.includes('/')) {
-      const parts = tgl.trim().split('/');
-      if (parts[0].length === 4) {
-        date = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-      } else {
-        date = new Date(parseInt(parts[2].length===2?'20'+parts[2]:parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+    if(wktStr.includes('T') || tglStr.includes('T')){
+      tgl = parseTgl(rawTgl);
+      wkt = parseWkt(rawWkt);
+      // Koreksi: epoch 1899-12-29 = waktu WIB dini hari yang tanggalnya
+      // disimpan Sheets sebagai hari berikutnya → kurangi 1 hari
+      if(wktStr.includes('1899-12-29')){
+        const utcH = new Date(wktStr).getUTCHours();
+        if(utcH < 17){
+          const d = new Date(tgl+'T00:00:00Z');
+          d.setUTCDate(d.getUTCDate()-1);
+          tgl = d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+        }
       }
     } else {
-      return null;
+      // String biasa dari Apps Script baru (Asia/Jakarta) — ambil langsung
+      tgl = tglStr.slice(0,10);
+      const m = wktStr.match(/^(\d{1,2}):(\d{2})/);
+      wkt = m ? p2(m[1])+':'+p2(m[2]) : '00:00';
     }
 
-    // Parse waktu — bisa ISO datetime "1899-12-30T11:34:31.000Z" atau "HH:MM:SS"
-    if (typeof wkt === 'string' && wkt.includes('T')) {
-      // Waktu dari Apps Script — UTC time + 7 jam untuk WIB
-      const w = new Date(wkt);
-      hours   = (w.getUTCHours() + 7) % 24;
-      minutes = w.getUTCMinutes();
-      seconds = w.getUTCSeconds();
-    } else if (typeof wkt === 'string' && wkt.includes(':')) {
-      const parts = wkt.trim().split(':');
-      hours   = parseInt(parts[0]) || 0;
-      minutes = parseInt(parts[1]) || 0;
-      seconds = parseInt(parts[2]) || 0;
-    } else {
-      return null;
-    }
-
-    date.setHours(hours, minutes, seconds, 0);
-    return isNaN(date.getTime()) ? null : date;
-  } catch { return null; }
+    if(!tgl||tgl.length<10) continue;
+    const waktu = tgl+' '+wkt;
+    const m1 = parseFloat(row[iM1])||0;
+    const m2 = parseFloat(row[iM2])||0;
+    const s1 = String(row[iS1]||'').replace(/[^A-Za-z]/g,'').toUpperCase();
+    const s2 = String(row[iS2]||'').replace(/[^A-Za-z]/g,'').toUpperCase();
+    rows.push({waktu,tgl,wkt,m1,m2,s1,s2});
+  }
+  return rows;
 }
 
-// ── SESSION DETECTION ─────────────────────────────────────────────────────────
-function detectSessions(data) {
-  const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
-  const GAP = 4 * 3600 * 1000;
 
-  // Step 1: find all ON rows
-  const onRows = data.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
-  if (onRows.length === 0) return [];
+// ── GROUP BY SESI ────────────────────────────────────────────
+// Sort GLOBAL dulu berdasarkan waktu lengkap (datetime),
+// baru pisahkan per sesi berdasarkan gap > 6 jam.
+// Ini mengatasi data tidak urut dari antrian offline SD card.
+function grupBySesi(rows){
+  if(!rows.length) return {};
+  const GAP_MS = 6 * 60 * 60 * 1000; // 6 jam
 
-  // Step 2: group ON rows into sessions by time gap
+  // Sort global berdasarkan waktu penuh
+  const sorted = [...rows].sort((a,b)=>{
+    const da = new Date(a.waktu).getTime();
+    const db = new Date(b.waktu).getTime();
+    return da - db;
+  });
+
+  // Pisahkan ke grup berdasarkan gap > 6 jam
   const groups = [];
-  let group = [onRows[0]];
-  for (let i = 1; i < onRows.length; i++) {
-    const gap = onRows[i].dt - onRows[i-1].dt;
-    if (gap > GAP) {
-      groups.push(group);
-      group = [onRows[i]];
+  let cur = [sorted[0]];
+  for(let i = 1; i < sorted.length; i++){
+    const prev = new Date(sorted[i-1].waktu).getTime();
+    const curr = new Date(sorted[i].waktu).getTime();
+    if(curr - prev > GAP_MS){
+      groups.push(cur);
+      cur = [sorted[i]];
     } else {
-      group.push(onRows[i]);
+      cur.push(sorted[i]);
     }
   }
-  groups.push(group);
+  groups.push(cur);
 
-  // Step 3: for each ON group, collect all data rows within that time window
-  return groups.slice(-CONFIG.maxSessions).map((g, i) => {
-    const startDt = g[0].dt;
-    const endDt   = g[g.length-1].dt;
-    // include OFF rows within the session window
-    const rows = data.filter(r => r.dt >= startDt && r.dt <= endDt);
-    const d = startDt;
-    return {
-      start: startDt,
-      end: endDt,
-      rows,
-      idx: i,
-      label: `${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-    };
+  // Buat map — key = tanggal mulai sesi
+  const map = {};
+  groups.forEach(grp=>{
+    const baseKey  = grp[0].waktu.slice(0,10);
+    const finalKey = map[baseKey] !== undefined
+      ? grp[0].waktu.slice(0,16)
+      : baseKey;
+    map[finalKey] = grp;
+
+    // Hitung jam ke- gabungan (dari awal sesi) — masih dipakai untuk
+    // filter dropdown "Fase" yang bersifat umum/netral terhadap mesin
+    const tSesi = new Date(grp[0].waktu).getTime();
+    grp.forEach(r=>{
+      const menit = (new Date(r.waktu).getTime() - tSesi) / 60000;
+      r.jam = Math.min(26, Math.floor(menit / 60) + 1);
+    });
+
+    // Hitung jam ke- TERPISAH per mesin (r.jam1, r.jam2) — dari transisi
+    // OFF→ON mesin itu sendiri di dalam sesi ini, bukan dari t0 gabungan
+    // di atas. Ini sumber data tunggal dipakai oleh grafik, kartu
+    // ringkasan, dan log — supaya kurva/label Standar tiap mesin
+    // mengikuti jam mulai mesin itu sendiri. Penting saat kedua mesin
+    // berjalan di rentang waktu berbeda dalam satu sesi (misal M1 sudah
+    // operasional, M2 baru menyusul uji coba).
+    //
+    // PENTING: bukan sekadar ON PERTAMA yang muncul, dan bukan pula
+    // sekadar "ON pertama yang bertahan cukup lama" (ambang waktu tetap
+    // gampang meleset kalau blip-nya kebetulan lebih panjang dari ambang).
+    // Jadi dicari periode ON TERPANJANG di seluruh sesi, lalu dipakai
+    // AWAL dari periode terpanjang itu — sesi pengeringan sungguhan
+    // hampir selalu jauh lebih panjang dibanding uji coba singkat atau
+    // panas nyasar dari mesin lain, jadi ini jauh lebih tahan terhadap
+    // blip apa pun durasinya.
+    function t0Mesin(sField){
+      let bestStart=null, bestDur=-1;
+      for(let i=0;i<grp.length;i++){
+        if(grp[i][sField]!=='ON') continue;
+        if(i>0 && grp[i-1][sField]==='ON') continue; // bukan awal transisi, lewati
+        const tStart = new Date(grp[i].waktu).getTime();
+        let j=i;
+        while(j<grp.length && grp[j][sField]==='ON') j++;
+        const tEnd = new Date(grp[j-1].waktu).getTime();
+        const dur = tEnd - tStart;
+        if(dur > bestDur){ bestDur = dur; bestStart = tStart; }
+      }
+      return bestStart;
+    }
+    const t0m1 = t0Mesin('s1');
+    const t0m2 = t0Mesin('s2');
+    grp.forEach(r=>{
+      const tNow = new Date(r.waktu).getTime();
+      if(t0m1!==null){
+        const menit1 = (tNow - t0m1) / 60000;
+        r.jam1 = menit1<0 ? null : Math.min(26, Math.floor(menit1/60)+1);
+      } else { r.jam1 = null; }
+      if(t0m2!==null){
+        const menit2 = (tNow - t0m2) / 60000;
+        r.jam2 = menit2<0 ? null : Math.min(26, Math.floor(menit2/60)+1);
+      } else { r.jam2 = null; }
+    });
   });
+  return map;
 }
 
-function pad(n) { return String(n).padStart(2,'0'); }
 
-// ── RENDER ────────────────────────────────────────────────────────────────────
-function renderAll() {
-  renderChips();
-  if (selectedSession) renderSession(selectedSession);
-}
+// ── STATE ────────────────────────────────────────────────────
+let allData={}, chart1=null, chart2=null, refreshTimer=null;
 
-function renderChips() {
-  const cont = document.getElementById('sessionChips');
-  cont.innerHTML = '';
-  sessions.forEach(s => {
-    const chip = document.createElement('div');
-    chip.className = 'session-chip' + (s === selectedSession ? ' active' : '');
-    chip.textContent = s.label;
-    chip.onclick = () => { selectedSession = s; renderAll(); };
-    cont.appendChild(chip);
-  });
-  // Scroll to active chip
-  const active = cont.querySelector('.active');
-  if (active) active.scrollIntoView({ inline: 'center', block: 'nearest' });
-}
-
-function renderSession(sess) {
-  const rows = sess.rows;
-  const onRowsOnly = rows.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
-  const lastRow = rows[rows.length - 1];
-  const firstOnRow = onRowsOnly.length ? onRowsOnly[0] : rows[0];
-  const lastOnRow  = onRowsOnly.length ? onRowsOnly[onRowsOnly.length - 1] : lastRow;
-  const totalHours = Math.round((lastOnRow.dt - firstOnRow.dt) / 3600000);
-  const currentHour = Math.round((lastOnRow.dt - firstOnRow.dt) / 3600000) + 1;
-
-  // Mason cards - gunakan data TERBARU dari seluruh data untuk status live
-  const liveRow = allData[allData.length - 1] || lastRow;
-  const isLatestSession = selectedSession === sessions[sessions.length - 1];
-  const displayRow = isLatestSession ? liveRow : lastRow;
-
-  // Cek apakah data hari ini
-  const _now = new Date();
-  const _ldt = liveRow ? liveRow.dt : null;
-  const _isToday = _ldt &&
-    _ldt.getFullYear() === _now.getFullYear() &&
-    _ldt.getMonth()    === _now.getMonth() &&
-    _ldt.getDate()     === _now.getDate();
-  const showAsLive = isLatestSession && _isToday;
-
-  renderMasonCard(1, displayRow.m1, displayRow.s1, currentHour, rows, showAsLive);
-  renderMasonCard(2, displayRow.m2, displayRow.s2, currentHour, rows, showAsLive);
-
-  // Summary strip
-  // Elapsed time in decimal hours
-  const elapsedMs = lastOnRow.dt - firstOnRow.dt;
-  const elapsedHours = elapsedMs / 3600000;
-  const elapsedDisplay = elapsedHours < 1
-    ? Math.round(elapsedHours * 60) + ' mnt'
-    : elapsedHours.toFixed(1) + 'j';
-
-  document.getElementById('stripJam').textContent    = currentHour;
-  document.getElementById('stripDurasi').textContent = elapsedDisplay;
-  document.getElementById('stripSesi').textContent   = sessions.indexOf(sess) + 1 + '/' + sessions.length;
-
-  // Last update
-  const now = new Date();
-  document.getElementById('lastUpdate').textContent = 'Update: ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
-
-  // Status dot - Live hanya jika ada data HARI INI di spreadsheet
-  const latestDataRow = allData[allData.length - 1];
-  const latestDt = latestDataRow ? latestDataRow.dt : null;
-  const isToday = latestDt &&
-    latestDt.getFullYear() === now.getFullYear() &&
-    latestDt.getMonth()    === now.getMonth() &&
-    latestDt.getDate()     === now.getDate();
-
-  const dot  = document.getElementById('statusDot');
-  const stxt = document.getElementById('statusText');
-  const lupd = document.getElementById('lastUpdate');
-
-  if (isToday) {
-    dot.className  = 'dot online';
-    stxt.textContent = 'Live';
-    stxt.style.color = '';
-  } else {
-    dot.className  = 'dot error';
-    stxt.textContent = 'Recorded';
-    stxt.style.color = 'var(--red)';
-    // Tampilkan tanggal data terakhir
-    if (latestDt) {
-      const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
-      lupd.textContent = 'Data terakhir: ' + latestDt.getDate() + ' ' + BULAN[latestDt.getMonth()] + ' ' + pad(latestDt.getHours()) + ':' + pad(latestDt.getMinutes());
-      lupd.style.color = 'var(--red)';
+// ── DEMO DATA ────────────────────────────────────────────────
+function buildDemo(){
+  const demo={};
+  const now=new Date();
+  for(let dd=0;dd<3;dd++){
+    const start=new Date(now);
+    start.setDate(start.getDate()-dd*2);
+    start.setHours(14,0,0,0);
+    const tgl=start.getFullYear()+'-'+p2(start.getMonth()+1)+'-'+p2(start.getDate());
+    demo[tgl]=[];
+    for(let j=1;j<=26;j++){
+      const s=getStd(j); const base=s!==null?s:35;
+      for(let q=0;q<4;q++){
+        const ms=(j-1)*3600000+q*900000;
+        const dt=new Date(start.getTime()+ms);
+        const m1=base+Math.round((Math.random()-0.5)*14);
+        const m2=base+Math.round((Math.random()-0.5)*14);
+        const wkt=p2(dt.getHours())+':'+p2(dt.getMinutes());
+        const dtgl=dt.getFullYear()+'-'+p2(dt.getMonth()+1)+'-'+p2(dt.getDate());
+        demo[tgl].push({waktu:dtgl+' '+wkt,tgl:dtgl,wkt,jam:j,m1,m2,
+          s1:j>=3&&j<=8?'ON':'OFF', s2:j>=3&&j<=8?'ON':'OFF'});
+      }
     }
   }
-
-  // Alert check
-  checkAlerts(lastRow, currentHour);
-
-  // Chart
-  renderChart(rows);
+  return demo;
 }
 
-function tempClass(t, status) {
-  if (status === 'OFF') return 'off';
-  if (t > 110) return 'hot';
-  if (t < 40)  return 'cool';
-  return 'normal';
-}
-
-function getPhase(hour) {
-  if (hour <= 2)  return 'awal';
-  if (hour <= 20) return 'utama';
-  if (hour <= 24) return 'penurunan';
-  return 'akhir';
-}
-
-function phaseLabel(p) {
-  return { awal:'Awal', utama:'Utama', penurunan:'Penurunan', akhir:'Akhir' }[p] || p;
-}
-
-function renderMasonCard(n, temp, status, hour, rows, isLive = true) {
-  const card  = document.getElementById('card' + n);
-  const tEl   = document.getElementById('temp' + n);
-  const bEl   = document.getElementById('badge' + n);
-  const pEl   = document.getElementById('phase' + n);
-
-  const on = status === 'ON';
-  card.classList.toggle('active-on', on);
-  card.classList.toggle('active-off', !on);
-
-  if (on) {
-    tEl.textContent = Math.round(temp) + '°';
-    tEl.className = 'mason-temp ' + tempClass(temp, status);
-  } else {
-    if (isLive) {
-      tEl.innerHTML = '<span style="font-size:18px;letter-spacing:0;color:var(--dim)">MESIN OFF</span>';
+// ── DROPDOWN ─────────────────────────────────────────────────
+function isiDropdown(keys){
+  const sel=document.getElementById('sel-tgl');
+  const prev=sel.value;
+  sel.innerHTML='';
+  [...keys].sort().reverse().forEach(k=>{
+    const o=document.createElement('option');
+    o.value=k;
+    const rows=allData[k]||[];
+    // Ambil semua tanggal unik dalam sesi ini
+    const dates=[...new Set(rows.map(r=>r.tgl))].sort();
+    const tglMulai = dates[0];
+    const tglAkhir = dates[dates.length-1];
+    const jamMulai = rows.length ? rows[0].wkt.slice(0,5) : '';
+    const crossDay  = dates.length > 1;
+    // Label: selalu tampilkan tanggal mulai, tambah tanggal akhir jika lintas hari
+    if(crossDay){
+      o.textContent = '★ '+fmtTgl(tglMulai)+' → '+fmtTgl(tglAkhir)+' (mulai '+jamMulai+')';
     } else {
-      tEl.innerHTML = Math.round(temp) + '<span style="font-size:14px;color:var(--red);margin-left:2px">°*</span>';
+      o.textContent = fmtTgl(tglMulai)+(jamMulai?' (mulai '+jamMulai+')':'');
     }
-    tEl.className = 'mason-temp off';
+    sel.appendChild(o);
+  });
+  if(prev&&keys.includes(prev)) sel.value=prev;
+}
+
+// ── FILTER ROWS ───────────────────────────────────────────────
+function rowsForSel(){
+  const key=document.getElementById('sel-tgl').value;
+  const fase=document.getElementById('sel-fase').value;
+  let rows=(allData[key]||[]).slice();
+  const fm={awal:[1,2],utama:[3,8],turun:[9,24],akhir:[25,26]};
+  if(fase!=='semua'){ const[mn,mx]=fm[fase]; rows=rows.filter(r=>r.jam>=mn&&r.jam<=mx); }
+  return rows;
+}
+
+// ── LABELS (tandai pergantian hari) ──────────────────────────
+function buildLabels(rows){
+  let prev=null;
+  return rows.map(r=>{
+    const lbl=(prev&&r.tgl!==prev)?'▶'+r.wkt:r.wkt;
+    prev=r.tgl; return lbl;
+  });
+}
+
+// ── UPDATE METRIK ─────────────────────────────────────────────
+function updateMetrics(rows){
+  if(!rows.length) return;
+  const last=rows[rows.length-1];
+  // Referensi gabungan untuk indikator umum (kartu "Jam berjalan" & badge
+  // fase di atas) — pakai jam yang PALING JAUH di antara kedua mesin,
+  // supaya badge mengikuti mesin yang paling aktif/maju prosesnya.
+  const jamRef = Math.max(last.jam1!==undefined?last.jam1:0, last.jam2!==undefined?last.jam2:0) || last.jam;
+  const j1 = last.jam1!==undefined?last.jam1:last.jam;
+  const j2 = last.jam2!==undefined?last.jam2:last.jam;
+  const s1 = getStd(j1), s2 = getStd(j2);
+  const d1=s1!==null?last.m1-s1:null;
+  const d2=s2!==null?last.m2-s2:null;
+  const onRows1=rows.filter(r=>r.s1==='ON');
+  const onRows2=rows.filter(r=>r.s2==='ON');
+  const maxM1=onRows1.length?Math.max(...onRows1.map(r=>r.m1)):0;
+  const maxM2=onRows2.length?Math.max(...onRows2.map(r=>r.m2)):0;
+  const jMax1=onRows1.find(r=>r.m1===maxM1);
+  const jMax2=onRows2.find(r=>r.m2===maxM2);
+  const f=getFase(jamRef);
+
+  // Tanggal sesi
+  const key=document.getElementById('sel-tgl').value;
+  const dates=[...new Set((allData[key]||[]).map(r=>r.tgl))];
+  document.getElementById('m-tgl').textContent =
+    dates.length>1 ? fmtTgl(dates[0])+' – '+fmtTgl(dates[dates.length-1]) : fmtTgl(key);
+  document.getElementById('m1-jam').textContent = j1!=null ? j1 : '—';
+  document.getElementById('m1-std').textContent = 'Standar: '+(s1!==null?s1+'°C':(j1==null?'Belum ON':'Udara segar'));
+  document.getElementById('m2-jam').textContent = j2!=null ? j2 : '—';
+  document.getElementById('m2-std').textContent = 'Standar: '+(s2!==null?s2+'°C':(j2==null?'Belum ON':'Udara segar'));
+  document.getElementById('m1v').textContent   = rnd(last.m1);
+  document.getElementById('m2v').textContent   = rnd(last.m2);
+  document.getElementById('m1d').textContent   = 'vs standar: '+fmtDelta(d1);
+  document.getElementById('m2d').textContent   = 'vs standar: '+fmtDelta(d2);
+  document.getElementById('m1max').textContent = onRows1.length?'Maks: '+rnd(maxM1)+'°C (Jam '+(jMax1?(jMax1.jam1!==undefined?jMax1.jam1:jMax1.jam):'—')+')':'Maks: —';
+  document.getElementById('m2max').textContent = onRows2.length?'Maks: '+rnd(maxM2)+'°C (Jam '+(jMax2?(jMax2.jam2!==undefined?jMax2.jam2:jMax2.jam):'—')+')':'Maks: —';
+  document.getElementById('mtot').textContent  = rows.length;
+  const dur=Math.round((new Date(rows[rows.length-1].waktu)-new Date(rows[0].waktu))/36e5*10)/10;
+  document.getElementById('mdur').textContent  = isNaN(dur)?'—':dur+' jam';
+
+  if(f){
+    document.getElementById('fase-tag').textContent  = f.fase;
+    document.getElementById('fase-desc').textContent = f.ket||'Jam ke-'+f.r[0]+(f.r[0]!==f.r[1]?'–'+f.r[1]:'')+' · Standar: '+(f.s!==null?f.s+'°C':'Udara segar');
   }
 
-  const phase = getPhase(hour);
-  const std = PTPN_STANDARD[phase];
-  let badgeClass = 'badge-off', badgeText = 'OFF';
-  if (on) {
-    if (temp > std.max)      { badgeClass = 'badge-hot';  badgeText = 'TERLALU PANAS'; }
-    else if (temp < std.min) { badgeClass = 'badge-warn'; badgeText = 'DI BAWAH STD'; }
-    else                     { badgeClass = 'badge-on';   badgeText = 'NORMAL ✓'; }
+  // Lintas hari
+  const cdBanner=document.getElementById('cd-banner');
+  if(dates.length>1){
+    document.getElementById('cd-txt').textContent='Siklus ini melewati '+dates.length+' hari: '+dates.map(fmtTgl).join(' → ')+' · Tanda ▶ pada grafik = pergantian hari';
+    cdBanner.style.display='flex';
+  } else { cdBanner.style.display='none'; }
+
+  // Status alat
+  // Jika data terakhir > 15 menit yang lalu → asumsikan alat OFF
+  const ab = document.getElementById('alat-badge');
+  const lastTime    = new Date(last.waktu).getTime();
+  const menitSejak  = (Date.now() - lastTime) / 60000;
+  const alatTimeout = menitSejak > 30;
+
+  // Update label waktu terakhir di header
+  const lupdEl = document.getElementById('lupd');
+  if(lupdEl){
+    if(menitSejak < 1){
+      lupdEl.textContent = 'Update: baru saja';
+    } else if(menitSejak < 60){
+      lupdEl.textContent = 'Data terakhir: '+Math.round(menitSejak)+' mnt lalu';
+    } else {
+      lupdEl.textContent = 'Data terakhir: '+Math.round(menitSejak/60*10)/10+' jam lalu';
+    }
   }
-  bEl.className = 'status-badge ' + badgeClass;
-  if (on) {
-    bEl.textContent = badgeText;
-    pEl.textContent = 'Fase ' + phaseLabel(phase);
-  } else if (isLive) {
-    bEl.textContent = '● OFF';
-    pEl.textContent = 'Tidak beroperasi';
+
+  ab.style.display = 'inline-block';
+  // Format waktu pembacaan terakhir
+  const tglTerakhir = last.waktu.slice(0,10);
+  const jamTerakhir = last.waktu.slice(11,16);
+  const labelTerakhir = '· Terakhir: '+fmtTgl(tglTerakhir)+' '+jamTerakhir;
+
+  if(alatTimeout){
+    // Tampilkan status OFF + info waktu pembacaan terakhir
+    ab.textContent = 'Alat: OFF '+labelTerakhir;
+    ab.style.background = '#f5f4f0'; ab.style.color = '#888780';
+    ab.style.border = '1px solid #d3d1c7';
+    ab.style.borderRadius = '12px';
   } else {
-    bEl.style.background = 'rgba(224,90,74,0.15)';
-    bEl.style.color = 'var(--red)';
-    bEl.textContent = '● Recorded';
-    pEl.textContent = 'Suhu terakhir tercatat';
+    ab.style.border = 'none';
+    const on1 = last.s1==='ON', on2 = last.s2==='ON';
+    if(on1&&on2){  ab.textContent='Mason 1 & 2: ON';       ab.style.background='#EAF3DE'; ab.style.color='#27500A'; }
+    else if(on1){  ab.textContent='Mason 1: ON | M2: OFF'; ab.style.background='#EAF3DE'; ab.style.color='#27500A'; }
+    else if(on2){  ab.textContent='Mason 1: OFF | M2: ON'; ab.style.background='#EAF3DE'; ab.style.color='#27500A'; }
+    else {         ab.textContent='Alat: OFF';              ab.style.background='#f5f4f0'; ab.style.color='#888780'; }
   }
 }
 
-function checkAlerts(lastRow, hour) {
-  const alerts = [];
-  const phase = getPhase(hour);
-  const std = PTPN_STANDARD[phase];
-  if (lastRow.s1 === 'ON' && lastRow.m1 > std.max) alerts.push(`M1 terlalu panas: ${Math.round(lastRow.m1)}°C (std max ${std.max}°C)`);
-  if (lastRow.s2 === 'ON' && lastRow.m2 > std.max) alerts.push(`M2 terlalu panas: ${Math.round(lastRow.m2)}°C (std max ${std.max}°C)`);
-
-  const ab = document.getElementById('alertBanner');
-  if (alerts.length) {
-    ab.classList.add('show');
-    document.getElementById('alertMsg').textContent = alerts.join(' | ');
-  } else {
-    ab.classList.remove('show');
+// ── RENDER LOG (layar) — hanya tampilkan baris ON ────────────
+function renderLog(rows){
+  const tbody=document.getElementById('log-body');
+  tbody.innerHTML='';
+  let prevTgl=null, offCount=0;
+  function flushOff(){
+    if(offCount>0){
+      tbody.insertAdjacentHTML('beforeend','<tr style="background:#fafaf8;"><td colspan="10" style="font-size:11px;color:#888780;padding:4px 10px;font-style:italic;">— '+offCount+' pembacaan saat Alat OFF —</td></tr>');
+      offCount=0;
+    }
   }
+  rows.forEach(r=>{
+    const anyOn=r.s1==='ON'||r.s2==='ON';
+    if(prevTgl&&r.tgl!==prevTgl){ flushOff(); tbody.insertAdjacentHTML('beforeend','<tr class="cd-row"><td colspan="10">▶ Pergantian hari — '+fmtTgl(r.tgl)+'</td></tr>'); }
+    prevTgl=r.tgl;
+    if(!anyOn){ offCount++; return; }
+    flushOff();
+    const j1 = r.jam1!==undefined ? r.jam1 : r.jam;
+    const j2 = r.jam2!==undefined ? r.jam2 : r.jam;
+    const s1=getStd(j1), s2=getStd(j2);
+    const f1=getFase(j1), f2=getFase(j2);
+    const d1=s1!==null?r.m1-s1:null, d2=s2!==null?r.m2-s2:null;
+    // Kolom "Jam ke-" & "Std" tunggal di tabel ini mengikuti mesin yang
+    // AKTIF di baris tsb (kalau M1 ON pakai jam/std M1, kalau tidak pakai M2)
+    // — tapi Δ M1 dan Δ M2 di atas SELALU dihitung dari jam masing-masing
+    // mesin sendiri, sehingga tetap akurat walau kedua mesin berjalan di
+    // rentang jam berbeda dalam sesi yang sama.
+    const jamTampil = r.s1==='ON' ? j1 : j2;
+    const stdTampil = r.s1==='ON' ? s1 : s2;
+    const faseObj = r.s1==='ON' ? f1 : f2;
+    const faseLabel = (f1&&f2&&f1.fase!==f2.fase)
+      ? ('M1:'+f1.fase+' · M2:'+f2.fase)
+      : (faseObj?faseObj.fase:'—');
+    tbody.insertAdjacentHTML('beforeend',`<tr>
+      <td>${r.wkt}</td><td class="tr">${jamTampil!=null?jamTampil:'—'}</td>
+      <td class="tr"><span class="badge b-std">${stdTampil!==null?stdTampil+'°C':'—'}</span></td>
+      <td class="tr">${rnd(r.m1)}</td>
+      <td class="tr" style="color:${dColor(d1)}">${fmtDelta(d1)}</td>
+      <td class="tr">${rnd(r.m2)}</td>
+      <td class="tr" style="color:${dColor(d2)}">${fmtDelta(d2)}</td>
+      <td><span class="badge ${r.s1==='ON'?'b-on':'b-off'}">${r.s1||'—'}</span></td>
+      <td><span class="badge ${r.s2==='ON'?'b-on':'b-off'}">${r.s2||'—'}</span></td>
+      <td><span class="badge b-gray">${faseLabel}</span></td>
+    </tr>`);
+  });
+  flushOff();
+  if(!tbody.innerHTML) tbody.innerHTML='<tr><td colspan="10" style="color:#888780;font-style:italic;padding:10px;">Tidak ada pembacaan saat ON.</td></tr>';
 }
 
-// ── CHART ─────────────────────────────────────────────────────────────────────
-function renderChart(rows) {
-  const labels = [], d1 = [], d2 = [], std_line = [];
-  const onRows = rows.filter(r => r.s1 === 'ON' || r.s2 === 'ON');
-  if (onRows.length === 0) return;
-  const startDt = onRows[0].dt;
-  // Use actual latest ON row for end
-  const endDt = onRows[onRows.length - 1].dt;
+// ── RENDER LOG CETAK (per jam, hanya saat ON) ───────────────
+function renderPrintLog(rows){
+  const tbody=document.getElementById('plog-body');
+  tbody.innerHTML='';
+  const avg=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
 
-  // Bucket per 30 menit — setiap titik mewakili rata-rata suhu dalam 30 menit
-  const BUCKET_MS = 30 * 60 * 1000; // 30 menit
-
-  const bucketMap = {};
-  onRows.forEach(r => {
-    const elapsedMs = r.dt - startDt;
-    const bucketIdx = Math.floor(elapsedMs / BUCKET_MS);
-    if (!bucketMap[bucketIdx]) bucketMap[bucketIdx] = { m1vals: [], m2vals: [] };
-    if (r.s1 === 'ON') bucketMap[bucketIdx].m1vals.push(r.m1);
-    if (r.s2 === 'ON') bucketMap[bucketIdx].m2vals.push(r.m2);
+  // Kelompokkan TERPISAH per mesin — "Jam ke-N" milik M1 belum tentu
+  // rentang waktu yang sama dengan "Jam ke-N" milik M2, kalau keduanya
+  // mulai ON di waktu berbeda dalam sesi yang sama.
+  const byJam1={}, byJam2={};
+  rows.forEach(r=>{
+    if(r.s1==='ON' && r.jam1!=null){
+      if(!byJam1[r.jam1]) byJam1[r.jam1]=[];
+      byJam1[r.jam1].push(r);
+    }
+    if(r.s2==='ON' && r.jam2!=null){
+      if(!byJam2[r.jam2]) byJam2[r.jam2]=[];
+      byJam2[r.jam2].push(r);
+    }
   });
 
-  const sortedKeys = Object.keys(bucketMap).map(Number).sort((a,b) => a-b);
-
-  // Isi gap bucket yang kosong di antara data agar grafik tidak putus
-  const minKey = sortedKeys[0];
-  const maxKey = sortedKeys[sortedKeys.length - 1];
-  for (let k = minKey; k <= maxKey; k++) {
-    if (!bucketMap[k]) bucketMap[k] = { m1vals: [], m2vals: [] };
+  const allJams=[...new Set([...Object.keys(byJam1),...Object.keys(byJam2)].map(Number))].sort((a,b)=>a-b);
+  let prevTgl=null, offJams=[];
+  function flushOff(){
+    if(offJams.length){
+      tbody.insertAdjacentHTML('beforeend','<tr style="background:#fafaf8;"><td colspan="13" style="font-size:9px;color:#888780;font-style:italic;padding:3px 8px;">— Jam ke-'+offJams[0]+(offJams.length>1?'–'+offJams[offJams.length-1]:'')+': Alat OFF ('+offJams.length+' jam) —</td></tr>');
+      offJams=[];
+    }
   }
-  const allKeys = Object.keys(bucketMap).map(Number).sort((a,b) => a-b);
+  allJams.forEach(j=>{
+    const g1=byJam1[j], g2=byJam2[j];
+    if(!g1 && !g2){ offJams.push(j); return; }
+    flushOff();
+    const refRow = (g1&&g1[0]) || (g2&&g2[0]);
+    if(prevTgl&&refRow.tgl!==prevTgl){ tbody.insertAdjacentHTML('beforeend','<tr class="cd-row"><td colspan="13">▶ Pergantian hari — '+fmtTgl(refRow.tgl)+'</td></tr>'); }
+    prevTgl=refRow.tgl;
 
-  allKeys.forEach(k => {
-    const menitMulai = k * 30;
-    const jam = Math.floor(menitMulai / 60);
-    const sisa = menitMulai % 60;
-    let labelStr;
-    if (menitMulai === 0)       labelStr = '0m';
-    else if (sisa === 0)        labelStr = jam + 'j';
-    else if (jam === 0)         labelStr = sisa + 'm';
-    else                        labelStr = jam + 'j' + sisa + 'm';
+    const m1s = g1?g1.map(r=>r.m1):[];
+    const m2s = g2?g2.map(r=>r.m2):[];
+    const s = getStd(j);
+    const f = getFase(j);
+    const d1 = (s!==null&&m1s.length)?avg(m1s)-s:null;
+    const d2 = (s!==null&&m2s.length)?avg(m2s)-s:null;
 
-    const hNum = Math.max(1, Math.ceil((menitMulai + 30) / 60));
-    const bkt  = bucketMap[k];
-    const avg1 = bkt.m1vals.length ? Math.round(bkt.m1vals.reduce((a,b)=>a+b,0)/bkt.m1vals.length*10)/10 : null;
-    const avg2 = bkt.m2vals.length ? Math.round(bkt.m2vals.reduce((a,b)=>a+b,0)/bkt.m2vals.length*10)/10 : null;
-    labels.push(labelStr);
-    d1.push(avg1);
-    d2.push(avg2);
-    std_line.push(PTPN_STANDARD[getPhase(hNum)].max);
+    tbody.insertAdjacentHTML('beforeend',`<tr>
+      <td><strong>${j}</strong></td><td>${refRow.wkt}</td>
+      <td><span class="badge b-gray" style="font-size:8px;">${f?f.fase:'—'}</span></td>
+      <td class="tr"><span class="badge b-std">${s!==null?s+'°C':'—'}</span></td>
+      <td class="tr"><strong>${m1s.length?rnd(avg(m1s)):'—'}</strong></td>
+      <td class="tr" style="color:#888780;">${m1s.length?rnd(Math.min(...m1s)):'—'}</td>
+      <td class="tr" style="color:#993C1D;">${m1s.length?rnd(Math.max(...m1s)):'—'}</td>
+      <td class="tr" style="color:${dColor(d1)}">${fmtDelta(d1)}</td>
+      <td class="tr"><strong>${m2s.length?rnd(avg(m2s)):'—'}</strong></td>
+      <td class="tr" style="color:#888780;">${m2s.length?rnd(Math.min(...m2s)):'—'}</td>
+      <td class="tr" style="color:#993C1D;">${m2s.length?rnd(Math.max(...m2s)):'—'}</td>
+      <td class="tr" style="color:${dColor(d2)}">${fmtDelta(d2)}</td>
+      <td><span class="badge ${m1s.length?'b-on':'b-off'}">${m1s.length?'ON':'OFF'}</span> <span class="badge ${m2s.length?'b-on':'b-off'}">${m2s.length?'ON':'OFF'}</span></td>
+    </tr>`);
   });
+  flushOff();
+}
 
-  if (tempChart) tempChart.destroy();
-  const ctx = document.getElementById('tempChart').getContext('2d');
-  tempChart = new Chart(ctx, {
+// ── GRAFIK ────────────────────────────────────────────────────
+function maxDS(val, n, color){
+  return {
+    label:'Maks', data:Array(n).fill(val),
+    borderColor:color, borderWidth:1.5, borderDash:[6,4],
+    pointRadius:0, fill:false, tension:0
+  };
+}
+
+function buatGrafik(rows){
+  const labels   = buildLabels(rows);
+  const stdData1 = rows.map(r=>getStd(r.jam1!==undefined?r.jam1:r.jam));
+  const stdData2 = rows.map(r=>getStd(r.jam2!==undefined?r.jam2:r.jam));
+  const m1Data   = rows.map(r=>r.s1==='ON'?r.m1:null);
+  const m2Data   = rows.map(r=>r.s2==='ON'?r.m2:null);
+  const on1      = rows.filter(r=>r.s1==='ON').map(r=>r.m1);
+  const on2      = rows.filter(r=>r.s2==='ON').map(r=>r.m2);
+  const mx1      = on1.length ? Math.max(...on1) : 0;
+  const mx2      = on2.length ? Math.max(...on2) : 0;
+  const n        = rows.length;
+
+  const scaleY = {
+    min:20, max:140,
+    ticks:{font:{size:10}, color:'#888780', callback:function(v){return v+'°C';}},
+    grid:{color:'rgba(0,0,0,0.06)'},
+    title:{display:true, text:'Suhu (°C)', font:{size:10}, color:'#888780'}
+  };
+  const scaleX = {
+    ticks:{font:{size:10}, color:'#888780', autoSkip:true, maxRotation:45, maxTicksLimit:20},
+    grid:{color:'rgba(0,0,0,0.05)'}
+  };
+  const ttip = {
+    callbacks:{
+      title: function(items){ var r=rows[items[0].dataIndex]; return r?r.waktu:''; },
+      label: function(c){ if(c.dataset.label==='Maks') return null; return c.dataset.label+': '+(c.parsed.y!==null?rnd(c.parsed.y)+'C':'OFF'); }
+    },
+    filter: function(i){ return i.dataset.label!=='Maks'; }
+  };
+
+  if(chart1) chart1.destroy();
+  chart1 = new Chart(document.getElementById('c1'), {
     type: 'line',
     data: {
-      labels,
+      labels: labels,
       datasets: [
-        {
-          label: 'Mason 1',
-          data: d1,
-          borderColor: '#ff9f2f',
-          backgroundColor: 'rgba(255,160,50,0.08)',
-          borderWidth: 2,
-          pointRadius: 2,
-          fill: false,
-          tension: 0.3,
-          spanGaps: true
-        },
-        {
-          label: 'Mason 2',
-          data: d2,
-          borderColor: '#5ab4e0',
-          backgroundColor: 'rgba(90,180,224,0.1)',
-          borderWidth: 2,
-          pointRadius: 2,
-          fill: false,
-          tension: 0.3,
-          spanGaps: true
-        },
-        {
-          label: 'Std Max',
-          data: std_line,
-          borderColor: 'rgba(240,168,48,0.5)',
-          borderWidth: 1.5,
-          borderDash: [4, 3],
-          pointRadius: 0,
-          fill: false,
-          tension: 0
-        }
+        {label:'Standar', data:stdData1, borderColor:'#185FA5', borderWidth:2, pointRadius:0, tension:0.3, fill:false},
+        {label:'Mason 1', data:m1Data, borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,0.07)', borderWidth:2.5, pointRadius:0, pointBackgroundColor:'#1D9E75', tension:0.2, fill:true, spanGaps:false},
+        maxDS(mx1, n, '#E24B4A')
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#242830',
-          borderColor: 'rgba(74,180,100,0.3)',
-          borderWidth: 1,
-          titleColor: '#f0f2f5',
-          bodyColor: '#9aa3b8',
-          callbacks: {
-            label: ctx => ctx.dataset.label + ': ' + (ctx.raw !== null ? ctx.raw + '°C' : '—')
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: '#9aa3b8', font: { size: 10 }, maxTicksLimit: 8 },
-          grid: { color: 'rgba(255,160,50,0.12)' }
-        },
-        y: {
-          ticks: { color: '#9aa3b8', font: { size: 10 }, callback: v => v + '°' },
-          grid: { color: 'rgba(255,160,50,0.12)' },
-          min: 20,
-          max: 140
-        }
-      }
+      plugins: {legend:{display:false}, tooltip:ttip},
+      scales: {x:scaleX, y:scaleY}
+    }
+  });
+
+  if(chart2) chart2.destroy();
+  chart2 = new Chart(document.getElementById('c2'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {label:'Standar', data:stdData2, borderColor:'#185FA5', borderWidth:2, pointRadius:0, tension:0.3, fill:false},
+        {label:'Mason 2', data:m2Data, borderColor:'#D85A30', backgroundColor:'rgba(216,90,48,0.07)', borderWidth:2.5, pointRadius:0, pointBackgroundColor:'#D85A30', tension:0.2, fill:true, spanGaps:false},
+        maxDS(mx2, n, '#E24B4A')
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {legend:{display:false}, tooltip:ttip},
+      scales: {x:scaleX, y:scaleY}
     }
   });
 }
 
-// ── STATUS ────────────────────────────────────────────────────────────────────
-function setStatusOnline() {
-  const dot = document.getElementById('statusDot');
-  dot.className = 'dot online';
-  document.getElementById('statusText').textContent = 'Live';
-}
-function setStatusOffline() {
-  const dot = document.getElementById('statusDot');
-  dot.className = 'dot offline';
-  document.getElementById('statusText').textContent = 'Cache';
-  document.getElementById('offlineBar').classList.add('show');
-}
-function setStatusError(msg) {
-  const dot = document.getElementById('statusDot');
-  dot.className = 'dot error';
-  document.getElementById('statusText').textContent = 'Error';
-}
+// ── ANALISA ───────────────────────────────────────────────────
+function renderAnalisa(rows){
+  const el = document.getElementById('analisa-content');
+  const wrap = document.getElementById('analisa-wrap');
+  if(!el) return;
 
-// ── COUNTDOWN ─────────────────────────────────────────────────────────────────
-function startCountdown() {
-  countdownSec = REFRESH_INTERVAL / 1000;
-  refreshTimer = setTimeout(() => fetchData(), REFRESH_INTERVAL);
-  clearInterval(countdownTimer);
-  countdownTimer = setInterval(() => {
-    countdownSec--;
-    const m = Math.floor(countdownSec / 60);
-    const s = countdownSec % 60;
-    document.getElementById('nextRefresh').textContent = `Auto-refresh dalam ${m}:${pad(s)}`;
-    if (countdownSec <= 0) clearInterval(countdownTimer);
-  }, 1000);
-}
+  // Cek apakah ada data ON di sesi ini
+  const onRows = rows.filter(r=>r.s1==='ON'||r.s2==='ON');
 
-function clearTimers() {
-  clearTimeout(refreshTimer);
-  clearInterval(countdownTimer);
-}
-
-// ── DETAIL MODAL ──────────────────────────────────────────────────────────────
-function openDetail(mason) {
-  currentDetailMason = mason;
-  if (!selectedSession) return;
-
-  const rows = selectedSession.rows;
-  const lastRow = rows[rows.length - 1];
-  const firstRow = rows[0];
-  const totalHours = Math.round((selectedSession.end - selectedSession.start) / 3600000);
-  const currentHour = Math.round((lastRow.dt - firstRow.dt) / 3600000) + 1;
-  const temp = mason === 1 ? lastRow.m1 : lastRow.m2;
-  const status = mason === 1 ? lastRow.s1 : lastRow.s2;
-  const phase = getPhase(currentHour);
-  const std = PTPN_STANDARD[phase];
-
-  document.getElementById('modalTitle').textContent = 'Mason ' + mason;
-  document.getElementById('modalSub').textContent = 'Sesi mulai ' + selectedSession.label;
-
-  // Compute stats
-  const onRows = rows.filter(r => (mason===1 ? r.s1 : r.s2) === 'ON');
-  const temps = onRows.map(r => mason===1 ? r.m1 : r.m2);
-  const avgTemp = temps.length ? Math.round(temps.reduce((a,b)=>a+b,0)/temps.length*10)/10 : 0;
-  const maxTemp = temps.length ? Math.round(Math.max(...temps)*10)/10 : 0;
-  const minTemp = temps.length ? Math.round(Math.min(...temps)*10)/10 : 0;
-
-  const rowsHtml = [
-    ['Suhu saat ini',   status==='ON' ? Math.round(temp)+'°C' : 'OFF'],
-    ['Fase pengeringan', phaseLabel(phase)],
-    ['Jam ke-',         currentHour + ' dari ' + totalHours + ' jam'],
-    ['Suhu rata-rata',  avgTemp + '°C'],
-    ['Suhu tertinggi',  maxTemp + '°C'],
-    ['Suhu terendah',   minTemp + '°C'],
-    ['Standar fase ini', std.min + '–' + std.max + '°C'],
-    ['Jumlah data ON',  onRows.length + ' titik'],
-  ].map(([k,v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
-
-  document.getElementById('modalRows').innerHTML = rowsHtml;
-
-  // Phase summary
-  const phases = ['awal','utama','penurunan','akhir'];
-  let phaseTbody = '';
-  phases.forEach(ph => {
-    const phRows = onRows.filter((r, i) => {
-      const hr = Math.round((r.dt - firstRow.dt) / 3600000) + 1;
-      return getPhase(hr) === ph;
-    });
-    if (!phRows.length) return;
-    const phTemps = phRows.map(r => mason===1 ? r.m1 : r.m2);
-    const phAvg = Math.round(phTemps.reduce((a,b)=>a+b,0)/phTemps.length);
-    const phStd = PTPN_STANDARD[ph];
-    const ok = phAvg >= phStd.min && phAvg <= phStd.max;
-    const color = ok ? '#4ab464' : '#f0a830';
-    phaseTbody += `<tr>
-      <td>${phaseLabel(ph)}</td>
-      <td>${phAvg}°C</td>
-      <td>${phStd.min}–${phStd.max}°C</td>
-      <td style="color:${color}">${ok ? '✓ OK' : '⚠ Cek'}</td>
-    </tr>`;
-  });
-  document.getElementById('phaseTbody').innerHTML = phaseTbody;
-
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-function closeDetail() {
-  document.getElementById('modalOverlay').classList.remove('open');
-}
-
-function closeDetailIfOutside(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeDetail();
-}
-
-// ── TOAST ────────────────────────────────────────────────────────────────────
-let toastTimer = null;
-function showToast(icon, msg, type = 'success') {
-  const el = document.getElementById('toast');
-  const colors = {
-    success: 'rgba(45,218,111,0.35)',
-    error:   'rgba(224,90,74,0.35)',
-    info:    'rgba(90,180,224,0.35)',
-    warn:    'rgba(240,168,48,0.35)'
-  };
-  el.style.borderColor = colors[type] || colors.success;
-  el.innerHTML = icon + ' ' + msg;
-  el.style.transform = 'translateX(-50%) translateY(0)';
-  el.style.opacity = '1';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el.style.transform = 'translateX(-50%) translateY(80px)';
-    el.style.opacity = '0';
-  }, 3500);
-}
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
-
-(function init() {
-  updateOnlineStatus();
-  if (loadConfig() && CONFIG.url) {
-    showScreen('loading');
-    fetchData();
-  } else {
-    // Try default URL
-    CONFIG.url = APPS_SCRIPT_URL;
-    CONFIG.maxSessions = 10;
-    showScreen('loading');
-    fetchData();
+  // Kalau tidak ada data ON sama sekali — sembunyikan seluruh section analisa
+  if(!onRows.length){
+    if(wrap) wrap.style.display='none';
+    el.innerHTML='';
+    return;
   }
+
+  // Ada data ON — tampilkan analisa
+  if(wrap) wrap.style.display='block';
+
+  const avg  = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const m1s  = onRows.map(r=>r.m1);
+  const m2s  = onRows.map(r=>r.m2);
+  const utama1 = rows.filter(r=>r.jam1>=3&&r.jam1<=8&&r.s1==='ON');
+  const utama2 = rows.filter(r=>r.jam2>=3&&r.jam2<=8&&r.s2==='ON');
+  const maxM1 = Math.max(...rows.filter(r=>r.s1==='ON').map(r=>r.m1));
+  const maxM2 = Math.max(...rows.filter(r=>r.s2==='ON').map(r=>r.m2));
+  const jam1Vals = rows.map(r=>r.jam1).filter(v=>v!=null);
+  const jam2Vals = rows.map(r=>r.jam2).filter(v=>v!=null);
+  const totalJam1 = jam1Vals.length?Math.max(...jam1Vals):null;
+  const totalJam2 = jam2Vals.length?Math.max(...jam2Vals):null;
+  const dur  = Math.round((new Date(rows[rows.length-1].waktu)-new Date(rows[0].waktu))/36e5*10)/10;
+  // Baris dianggap menyimpang kalau salah satu mesin yang ON menyimpang
+  // >5°C dari standar JAM-NYA SENDIRI (bukan jam gabungan)
+  const devRows = rows.filter(r=>{
+    const sd1=getStd(r.jam1), sd2=getStd(r.jam2);
+    const dev1 = r.s1==='ON' && sd1!==null && Math.abs(r.m1-sd1)>5;
+    const dev2 = r.s2==='ON' && sd2!==null && Math.abs(r.m2-sd2)>5;
+    return dev1||dev2;
+  });
+  const onTotal = rows.filter(r=>r.s1==='ON'||r.s2==='ON').length;
+  const pctDev  = onTotal ? Math.round(devRows.length/onTotal*100) : 0;
+
+  const row=(lbl,v1,v2,ket)=>`<tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #f0ede8;">${lbl}</td>
+    <td style="text-align:center;padding:4px 8px;border-bottom:1px solid #f0ede8;">${v1}</td>
+    <td style="text-align:center;padding:4px 8px;border-bottom:1px solid #f0ede8;">${v2}</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #f0ede8;font-size:11px;color:#5f5e5a;">${ket}</td>
+  </tr>`;
+
+  let h = `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;">
+    <tr style="background:#f5f4f0;">
+      <th style="text-align:left;padding:4px 8px;font-size:10px;border-bottom:1px solid #e0ded8;">Parameter</th>
+      <th style="text-align:center;padding:4px 8px;font-size:10px;border-bottom:1px solid #e0ded8;">Mason 1</th>
+      <th style="text-align:center;padding:4px 8px;font-size:10px;border-bottom:1px solid #e0ded8;">Mason 2</th>
+      <th style="text-align:left;padding:4px 8px;font-size:10px;border-bottom:1px solid #e0ded8;">Standar / Keterangan</th>
+    </tr>`;
+
+  h += row('Suhu rata-rata sesi (saat ON)', rnd(avg(m1s))+'°C', rnd(avg(m2s))+'°C', 'Seluruh siklus aktif');
+  h += row('Suhu maksimum tercapai', maxM1+'°C', maxM2+'°C', 'Fase utama std 120°C');
+  if(utama1.length||utama2.length) h += row('Rata-rata fase utama (Jam 3–8)', utama1.length?rnd(avg(utama1.map(r=>r.m1)))+'°C':'—', utama2.length?rnd(avg(utama2.map(r=>r.m2)))+'°C':'—', 'Standar: 120°C');
+  h += row('Durasi pengeringan aktual', dur+' jam', dur+' jam', 'Standar: 20–26 jam');
+  h += row('Jam pengeringan selesai', totalJam1!=null?'Jam ke-'+totalJam1:'—', totalJam2!=null?'Jam ke-'+totalJam2:'—', 'Target: Jam 25–26');
+  h += row('Pembacaan menyimpang >5°C (saat ON)', pctDev+'% ('+devRows.length+' baris)', '—', 'Pedoman: setiap jam dicatat');
+  h += '</table>';
+
+  // Analisa per fase — dihitung TERPISAH per mesin (jam1 untuk M1, jam2
+  // untuk M2), supaya kalau kedua mesin ada di fase berbeda pada sesi
+  // yang sama, masing-masing tetap dibandingkan ke fase & standar miliknya
+  // sendiri, bukan tercampur.
+  const faseMap = {};
+  rows.filter(r=>r.s1==='ON').forEach(r=>{
+    const f=getFase(r.jam1), s=getStd(r.jam1);
+    if(!f||s===null) return;
+    if(!faseMap[f.fase]) faseMap[f.fase]={std:s, d1s:[], d2s:[], r:f.r};
+    faseMap[f.fase].d1s.push(r.m1-s);
+  });
+  rows.filter(r=>r.s2==='ON').forEach(r=>{
+    const f=getFase(r.jam2), s=getStd(r.jam2);
+    if(!f||s===null) return;
+    if(!faseMap[f.fase]) faseMap[f.fase]={std:s, d1s:[], d2s:[], r:f.r};
+    faseMap[f.fase].d2s.push(r.m2-s);
+  });
+
+  if(Object.keys(faseMap).length){
+    h += `<div style="font-weight:600;font-size:11px;margin-bottom:4px;border-bottom:1px solid #e0ded8;padding-bottom:3px;">Analisa per fase pengeringan</div>`;
+    h += `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <tr style="background:#f5f4f0;">
+        <th style="text-align:left;padding:3px 8px;font-size:10px;">Fase</th>
+        <th style="text-align:center;padding:3px 8px;font-size:10px;">Std</th>
+        <th style="text-align:center;padding:3px 8px;font-size:10px;">Rata M1</th>
+        <th style="text-align:center;padding:3px 8px;font-size:10px;">Δ M1</th>
+        <th style="text-align:center;padding:3px 8px;font-size:10px;">Rata M2</th>
+        <th style="text-align:center;padding:3px 8px;font-size:10px;">Δ M2</th>
+        <th style="text-align:left;padding:3px 8px;font-size:10px;">Evaluasi</th>
+      </tr>`;
+
+    Object.entries(faseMap).forEach(([fase,fs])=>{
+      const a  = arr => arr.reduce((x,y)=>x+y,0)/arr.length;
+      const a1 = a(fs.d1s), a2 = a(fs.d2s);
+      const r1 = rnd(a1+fs.std), r2 = rnd(a2+fs.std);
+      const ev = Math.max(Math.abs(a1),Math.abs(a2))<=5?'Sesuai':Math.max(Math.abs(a1),Math.abs(a2))<=10?'Perlu perhatian':'Perlu tindakan';
+      const ec = ev==='Sesuai'?'#27500A':ev==='Perlu perhatian'?'#633806':'#791F1F';
+      const jl = fs.r[0]===fs.r[1]?'Jam '+fs.r[0]:'Jam '+fs.r[0]+'–'+fs.r[1];
+      h += `<tr>
+        <td style="padding:3px 8px;border-bottom:1px solid #f0ede8;">${fase}<br><span style="font-size:9px;color:#888780;">${jl}</span></td>
+        <td style="text-align:center;padding:3px 8px;border-bottom:1px solid #f0ede8;">${fs.std}°C</td>
+        <td style="text-align:center;padding:3px 8px;border-bottom:1px solid #f0ede8;">${r1}</td>
+        <td style="text-align:center;padding:3px 8px;border-bottom:1px solid #f0ede8;color:${dColor(a1)}">${fmtDelta(a1)}</td>
+        <td style="text-align:center;padding:3px 8px;border-bottom:1px solid #f0ede8;">${r2}</td>
+        <td style="text-align:center;padding:3px 8px;border-bottom:1px solid #f0ede8;color:${dColor(a2)}">${fmtDelta(a2)}</td>
+        <td style="padding:3px 8px;border-bottom:1px solid #f0ede8;font-weight:600;color:${ec};">${ev}</td>
+      </tr>`;
+    });
+    h += '</table>';
+  }
+
+  h += `<div style="margin-top:8px;padding:8px 12px;background:#f5f4f0;border-radius:5px;font-size:11px;color:#5f5e5a;line-height:1.8;">
+    <strong>Pedoman pengeringan Mason Dryer (PTPN XII):</strong><br>
+    · Setiap jam dilakukan pencatatan suhu udara pengering (Standar PTPN XII Tabel 1)<br>
+    · Fase utama Jam 3–8 pada 120°C: berlanjut sampai asap putih hilang<br>
+    · Menjelang akhir dilakukan pengukuran kadar air — target ≤11,5%<br>
+    · Kopi HS kering dikarungi 50 kg/karung, distapel di gudang kopi HS kering<br>
+    · Udara pengering harus bebas asap/smoky (cek dengan kapas basah)
+  </div>`;
+
+  el.innerHTML = h;
+}
+
+// ── GANTI SESI ────────────────────────────────────────────────
+function ganti(){
+  const rows=rowsForSel();
+  buatGrafik(rows);
+  updateMetrics(rows);
+  renderLog(rows);
+  renderPrintLog(rows);
+  renderAnalisa(rows);
+}
+
+// ── TEST KONEKSI ──────────────────────────────────────────────
+async function testKoneksi(){
+  const url=document.getElementById('iurl').value.trim();
+  const panel=document.getElementById('test-panel');
+  const log=document.getElementById('test-log');
+  panel.style.display='block'; log.innerHTML='';
+  const lg=(msg,col)=>{ const d=document.createElement('div'); d.style.color=col||'#e8e6e0'; d.textContent=msg; log.appendChild(d); panel.scrollTop=panel.scrollHeight; };
+  lg('URL: '+url,'#88C0D0');
+  if(!url){ lg('[ERROR] URL kosong','#BF616A'); return; }
+  lg('Mencoba fetch...','#e8e6e0');
+  try{
+    const res=await fetch(url,{redirect:'follow'});
+    lg('HTTP status: '+res.status,res.ok?'#A3BE8C':'#BF616A');
+    if(!res.ok){ lg('[ERROR] Server menolak. Cek deployment Apps Script.','#BF616A'); return; }
+    const txt=await res.text();
+    lg('Panjang respons: '+txt.length+' karakter','#e8e6e0');
+    lg('Preview: '+txt.slice(0,120),'#D8DEE9');
+    let json; try{ json=JSON.parse(txt); } catch(e){ lg('[ERROR] Bukan JSON: '+e.message,'#BF616A'); return; }
+    lg('JSON OK · '+json.length+' baris','#A3BE8C');
+    if(json.length<2){ lg('[WARN] Hanya header, belum ada data','#EBCB8B'); return; }
+    lg('Header: '+JSON.stringify(json[0]),'#88C0D0');
+    lg('Baris 1: '+JSON.stringify(json[1]),'#D8DEE9');
+    const rows=parseJSON(json);
+    lg('Baris berhasil di-parse: '+rows.length,rows.length>0?'#A3BE8C':'#BF616A');
+    if(rows.length){
+      lg('Baris pertama: '+JSON.stringify(rows[0]),'#A3BE8C');
+      lg('Baris terakhir: '+JSON.stringify(rows[rows.length-1]),'#A3BE8C');
+      // Simulasi grupBySesi — tampilkan sesi yang terbentuk
+      const sesi = grupBySesi(rows);
+      const keys = Object.keys(sesi).sort();
+      lg('Sesi terbentuk ('+keys.length+'): '+keys.join(', '),'#88C0D0');
+      // Tampilkan detail tiap sesi
+      keys.forEach(k=>{
+        const grp = sesi[k];
+        lg('  Sesi '+k+': '+grp.length+' baris | '+grp[0].waktu+' → '+grp[grp.length-1].waktu,'#88C0D0');
+      });
+      // Cari baris dengan waktu 23:xx untuk diagnosa
+      const baris23 = rows.filter(r=>r.wkt.startsWith('23'));
+      if(baris23.length){
+        lg('Baris dengan waktu 23:xx ('+baris23.length+'):','#EBCB8B');
+        baris23.forEach(r=>lg('  '+JSON.stringify(r),'#EBCB8B'));
+        // Cari raw JSON untuk baris ini
+        lg('Raw JSON untuk baris 23:xx:','#EBCB8B');
+        const hdr=json[0].map(h=>String(h).trim().toLowerCase().replace(/\s+/g,''));
+        const iB=hdr.findIndex(x=>x.includes('waktu')||x.includes('time'));
+        json.slice(1).forEach((row,i)=>{
+          const wktRaw=String(row[iB]||'');
+          if(wktRaw.includes('T')){
+            const d=new Date(wktRaw);
+            const hUTC=d.getUTCHours();
+            if(hUTC>=16&&hUTC<=17){
+              lg('  Baris '+(i+2)+': '+JSON.stringify(row),'#EBCB8B');
+            }
+          }
+        });
+      }
+      lg('[OK] Siap! Klik Hubungkan.','#A3BE8C');
+    }
+    else lg('[WARN] Tidak ada baris valid. Cek format kolom.','#EBCB8B');
+  } catch(e){ lg('[ERROR] '+e.message,'#BF616A'); }
+}
+
+// ── FETCH DENGAN RETRY (Apps Script kadang 404/error sesaat lalu normal lagi) ──
+async function fetchWithRetry(url, tries, delayMs){
+  tries = tries || 3;
+  delayMs = delayMs || 1500;
+  let lastErr;
+  for(let i=0; i<tries; i++){
+    try{
+      const res = await fetch(url,{redirect:'follow'});
+      if(!res.ok) throw new Error('HTTP '+res.status+' — cek deployment Apps Script.');
+      return res;
+    }catch(e){
+      lastErr = e;
+      if(i < tries-1) await new Promise(r=>setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
+// ── MODE RIWAYAT (muat semua tab minggu, bukan cuma minggu ini+sebelumnya) ──
+let historyMode = false;
+function toggleHistory(){
+  historyMode = !historyMode;
+  const btn = document.getElementById('btn-history');
+  if(btn){
+    btn.textContent = historyMode ? '\uD83D\uDD5A Riwayat: ON' : '\uD83D\uDD5A Riwayat: OFF';
+    btn.style.background = historyMode ? '#f59e0b' : '';
+    btn.style.color = historyMode ? '#fff' : '';
+  }
+  muat();
+}
+
+// ── MUAT DATA ─────────────────────────────────────────────────
+let sedangMuat = false;
+async function muat(){
+  if(modeAlat==='vis'){ return muatVIS(); }
+  if(sedangMuat){
+    console.log('[MUAT] Sudah ada proses muat berjalan, permintaan baru diabaikan supaya tidak menumpuk.');
+    return;
+  }
+  sedangMuat = true;
+  const btnMuat = document.querySelector('button[onclick="muat()"]');
+  const teksAsliBtn = btnMuat ? btnMuat.textContent : '';
+  if(btnMuat){ btnMuat.disabled = true; btnMuat.textContent = '⏳ Memuat...'; }
+
+  const url=document.getElementById('iurl').value.trim();
+  const dot=document.getElementById('dot');
+  const stxt=document.getElementById('stxt');
+  const lupd=document.getElementById('lupd');
+  document.getElementById('err-guide').style.display='none';
+
+  try {
+
+  if(!url){
+    allData=buildDemo();
+    isiDropdown(Object.keys(allData));
+    dot.className='dot live';
+    stxt.textContent='Data demo · belum ada URL';
+    lupd.textContent='';
+    ganti(); return;
+  }
+
+  // URL sudah disimpan via simpanURL()
+  stxt.textContent='Memuat...'; dot.className='dot';
+
+  try{
+    if(!url.includes('script.google.com/macros')) throw new Error('Gunakan URL Apps Script (script.google.com/macros/s/.../exec), bukan link spreadsheet biasa.');
+    const fetchUrl = url + (historyMode ? (url.includes('?')?'&':'?')+'history=1' : '');
+    const res=await fetchWithRetry(fetchUrl,3,1500);
+    const txt=await res.text();
+    let json;
+    try{ json=JSON.parse(txt); } catch(e){ throw new Error('Respons bukan JSON. Cek kode doGet() mengembalikan JSON.'); }
+    if(!Array.isArray(json)) throw new Error('Format JSON tidak sesuai (bukan array).');
+    const rows=parseJSON(json);
+    if(!rows.length) throw new Error('Data diambil ('+json.length+' baris) tapi 0 baris valid. Cek format kolom: Tanggal, Waktu, M1, M2, Status1, Status2.');
+    allData=grupBySesi(rows);
+    const keys=Object.keys(allData);
+    if(!keys.length) throw new Error('Tidak ada sesi ditemukan dari '+rows.length+' baris.');
+    isiDropdown(keys);
+    const allZero=rows.every(r=>r.m1===0&&r.m2===0);
+    dot.className=allZero?'dot':'dot live';
+    stxt.textContent=(historyMode?'Riwayat lengkap · ':'Terhubung · ')+rows.length+' pembacaan · '+keys.length+' sesi';
+    lupd.textContent='Update: '+new Date().toLocaleTimeString('id-ID');
+    ganti();
+  } catch(e){
+    dot.className='dot err';
+    stxt.textContent='Gagal';
+    document.getElementById('err-msg').textContent=e.message;
+    document.getElementById('err-guide').style.display='flex';
+    allData=buildDemo(); isiDropdown(Object.keys(allData)); ganti();
+  }
+
+  } finally {
+    sedangMuat = false;
+    if(btnMuat){ btnMuat.disabled = false; btnMuat.textContent = teksAsliBtn || '↺ Muat ulang'; }
+  }
+}
+
+// ── AUTO REFRESH ──────────────────────────────────────────────
+function aturRefresh(){
+  if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; }
+  const ms=parseInt(document.getElementById('sel-ref').value);
+  if(ms>0) refreshTimer=setInterval(muat,ms);
+}
+
+// ── CETAK ─────────────────────────────────────────────────────
+function cetakDashboard(){
+  const key=document.getElementById('sel-tgl').value;
+  const rows=rowsForSel();
+  document.getElementById('p-sesi').textContent='Sesi: '+fmtTgl(key);
+  document.getElementById('p-cetak').textContent='Dicetak: '+new Date().toLocaleString('id-ID');
+  document.getElementById('p-tot').textContent='Pembacaan: '+rows.length;
+  if(chart1) document.getElementById('c1i').src=chart1.toBase64Image('image/png',1);
+  if(chart2) document.getElementById('c2i').src=chart2.toBase64Image('image/png',1);
+  setTimeout(()=>window.print(),300);
+}
+
+// ── URL MANAGEMENT ───────────────────────────────────────────
+let _savedURL = '';
+
+function initURL(){
+  try{ _savedURL = localStorage.getItem('dash_url')||''; } catch(e){}
+  const inp = document.getElementById('iurl');
+  if(_savedURL){
+    inp.value = _savedURL;
+    inp.readOnly = true;
+    setURLStatus(true);
+  } else {
+    // Belum ada URL tersimpan — langsung mode edit
+    inp.readOnly = false;
+    inp.placeholder = 'Paste URL Apps Script lalu klik Simpan...';
+    document.getElementById('btn-ubah').style.display='none';
+    document.getElementById('btn-simpan').style.display='inline-block';
+    document.getElementById('btn-batal').style.display='none';
+  }
+}
+
+function setURLStatus(saved){
+  const inp=document.getElementById('iurl');
+  if(saved){
+    inp.style.background='#f5f4f0';
+    inp.style.color='#1a1a18';
+    inp.style.borderColor='#d3d1c7';
+  } else {
+    inp.style.background='#fff';
+    inp.style.color='#1a1a18';
+    inp.style.borderColor='#185FA5';
+  }
+}
+
+function ubahURL(){
+  const inp=document.getElementById('iurl');
+  inp.readOnly=false;
+  inp.style.background='#fff';
+  inp.style.borderColor='#185FA5';
+  inp.focus(); inp.select();
+  document.getElementById('btn-ubah').style.display='none';
+  document.getElementById('btn-simpan').style.display='inline-block';
+  document.getElementById('btn-batal').style.display=_savedURL?'inline-block':'none';
+}
+
+function simpanURL(){
+  const inp=document.getElementById('iurl');
+  const url=inp.value.trim();
+  if(!url){ alert('URL tidak boleh kosong.'); return; }
+  if(!url.includes('script.google.com/macros')){
+    alert('URL tidak valid. Gunakan URL Apps Script: https://script.google.com/macros/s/.../exec'); return;
+  }
+  try{ localStorage.setItem('dash_url', url); } catch(e){}
+  _savedURL=url;
+  inp.readOnly=true;
+  setURLStatus(true);
+  document.getElementById('btn-ubah').style.display='inline-block';
+  document.getElementById('btn-simpan').style.display='none';
+  document.getElementById('btn-batal').style.display='none';
+  // Langsung hubungkan setelah simpan
+  muat();
+}
+
+function batalURL(){
+  const inp=document.getElementById('iurl');
+  inp.value=_savedURL;
+  inp.readOnly=true;
+  setURLStatus(true);
+  document.getElementById('btn-ubah').style.display='inline-block';
+  document.getElementById('btn-simpan').style.display='none';
+  document.getElementById('btn-batal').style.display='none';
+}
+
+// ── FIREBASE CONFIG ───────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:            "AIzaSyCBPao4ggZxrUweUdBw6y1N5wygywb9Chc",
+  authDomain:        "monitoring-gumitir.firebaseapp.com",
+  databaseURL:       "https://monitoring-gumitir-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "monitoring-gumitir",
+  storageBucket:     "monitoring-gumitir.firebasestorage.app",
+  messagingSenderId: "163027164401",
+  appId:             "1:163027164401:web:d283d3668eb6f3c7e29d50"
+};
+// Pastikan Firebase SDK sudah load sebelum init
+if(typeof firebase === 'undefined'){
+  console.error('[Firebase] SDK belum load — cek koneksi internet');
+} else {
+  firebase.initializeApp(FB_CONFIG);
+}
+const db = (typeof firebase !== 'undefined') ? firebase.database() : null;
+const CONFIG_REF = db ? db.ref('config/apps_script_url') : null;
+
+// ── URL SIMPAN / UBAH (Firebase-backed) ──────────────────────
+function modeDisplay(url){
+  const short = url.length > 50 ? url.slice(0,47)+'…' : url;
+  document.getElementById('url-display').textContent = short;
+  document.getElementById('url-display').title = url;
+  document.getElementById('url-display').style.display = 'block';
+  document.getElementById('iurl').style.display = 'none';
+  document.getElementById('btn-simpan').style.display = 'none';
+  document.getElementById('btn-ubah').style.display = 'inline-block';
+  document.getElementById('btn-hubungkan').style.display = 'none';
+}
+
+function modeEdit(){
+  document.getElementById('url-display').style.display = 'none';
+  document.getElementById('iurl').style.display = 'block';
+  document.getElementById('btn-simpan').style.display = 'inline-block';
+  document.getElementById('btn-ubah').style.display = 'none';
+  document.getElementById('btn-hubungkan').style.display = 'inline-block';
+  document.getElementById('iurl').focus();
+}
+
+function simpanURL(){
+  const url = document.getElementById('iurl').value.trim();
+  if(!url){ alert('Masukkan URL Apps Script terlebih dahulu.'); return; }
+  if(!url.includes('script.google.com/macros')){
+    alert('URL tidak valid. Gunakan URL Apps Script: https://script.google.com/macros/s/.../exec');
+    return;
+  }
+  // Simpan ke Firebase
+  const btn = document.getElementById('btn-simpan');
+  btn.textContent = '⏳ Menyimpan...';
+  btn.disabled = true;
+  if(!CONFIG_REF){ modeDisplay(url); muat(); return; }
+  CONFIG_REF.set(url)
+    .then(()=>{
+      console.log('[Firebase] URL tersimpan OK');
+      modeDisplay(url);
+      muat();
+    })
+    .catch(err=>{
+      alert('Gagal simpan ke Firebase: '+err.message);
+      btn.textContent = '💾 Simpan';
+      btn.disabled = false;
+    });
+}
+
+function ubahURL(){
+  const cur = document.getElementById('url-display').title || document.getElementById('iurl').value;
+  document.getElementById('iurl').value = cur;
+  modeEdit();
+}
+
+// ── GENERATE EXCEL FORM XIII PTPN I ──────────────────────────
+const PTPN1_LOGO_B64 = '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';
+const NAMA_MANAJER   = 'Christian Suryo Hadmadi';
+const NAMA_ASSTEKPOL = 'Syaiful Kahfi';
+
+const STD_SUHU_XL = {1:35,2:90,3:120,4:120,5:120,6:120,7:120,8:120,
+                     9:110,10:110,11:105,12:105,13:100,14:100,
+                     15:90,16:90,17:80,18:80,19:80,
+                     20:70,21:70,22:70,23:60,24:60,
+                     25:null,26:null,27:null};
+
+function fmtTglXL(tgl){
+  if(!tgl||tgl.length<10) return tgl||'';
+  const p=tgl.slice(0,10).split('-');
+  return p[2]+'-'+p[1]+'-'+p[0];
+}
+
+function hitungLamaXL(w1,d1,w2,d2){
+  try{
+    const dt1=new Date(d1+'T'+w1+':00');
+    const dt2=new Date(d2+'T'+w2+':00');
+    const h=(dt2-dt1)/3600000;
+    return h>0?h.toFixed(1)+' Jam':'';
+  }catch(e){ return ''; }
+}
+
+function generateExcel(alat){
+  const isVis = (alat==='vis');
+  const rows = isVis ? rowsV() : rowsForSel();
+  if(!rows.length){ alert('Tidak ada data untuk sesi ini.'); return; }
+  if(typeof ExcelJS==='undefined'){ alert('Library ExcelJS belum dimuat. Pastikan koneksi internet aktif.'); return; }
+
+  // ── Pilih mesin (Mason 1 / Mason 2) ──
+  const mesin = document.getElementById(isVis ? 'sel-vmesin' : 'sel-mesin').value; // '1' atau '2'
+  const mField = (isVis?'v':'m')+(mesin==='2' ? '2' : '1');
+  const sField = mesin==='2' ? 's2' : 's1';
+  const namaAlat = isVis ? 'VIS Dryer' : 'Mason';
+  const mesinLabel = namaAlat+' '+mesin;
+
+  // Jam Ke dihitung ulang khusus untuk mesin ini — dari transisi OFF→ON pertama
+  // mesin ini di sesi terpilih, BUKAN dari r.jam global (yang bisa milik mesin lain
+  // jika keduanya jalan bersamaan dengan waktu mulai berbeda).
+  const onRowsMesin = rows.filter(r=>r[sField]==='ON')
+                          .sort((a,b)=>new Date(a.waktu)-new Date(b.waktu));
+  if(!onRowsMesin.length){
+    alert(mesinLabel+' tidak beroperasi (status OFF sepanjang sesi ini). Pilih mesin lain atau sesi lain.');
+    return;
+  }
+  const t0 = new Date(onRowsMesin[0].waktu).getTime();
+  rows.forEach(function(r){
+    const menit=(new Date(r.waktu).getTime()-t0)/60000;
+    r.jamMesin = menit<0 ? null : Math.min(26, Math.floor(menit/60)+1);
+  });
+
+  // Pilih data terbaik per jam (khusus mesin terpilih)
+  const best={};
+  rows.forEach(function(r){
+    const j=r.jamMesin, std=STD_SUHU_XL[j], mv=r[mField];
+    if(!j||j<1||j>27) return;
+    // Mason: ambil pembacaan paling dekat standar. VIS: tidak ada penilaian
+    // terhadap standar, jadi ambil pembacaan paling dekat dengan awal jam tsb.
+    const sel = isVis
+      ? ((mv!==null&&mv!==undefined&&mv>0) ? Math.abs(new Date(r.waktu).getTime()-(t0+(j-1)*3600000)) : 9e15)
+      : ((std!==null&&std!==undefined&&mv>0)?Math.abs(mv-std):9999);
+    if(!best[j]||sel<best[j].sel) best[j]=Object.assign({},r,{sel:sel,mVal:mv});
+  });
+
+  const rOn1=onRowsMesin[0], rOn2=onRowsMesin[onRowsMesin.length-1];
+  const tgl1=rOn1.tgl, w1=rOn1.wkt;
+  const tgl2=rOn2.tgl, w2=rOn2.wkt;
+  const lama=hitungLamaXL(w1,tgl1,w2,tgl2);
+
+  const btn=document.querySelector(isVis ? 'button[onclick="generateExcel(\'vis\')"]' : 'button[onclick="generateExcel()"]');
+  const origText=btn?btn.textContent:'';
+  if(btn){btn.textContent='⏳ Membuat...';btn.disabled=true;}
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(isVis ? 'Form Pengeringan - '+mesinLabel : 'Form Pengeringan Mekanis - '+mesinLabel);
+
+  // Column widths
+  ws.columns = [
+    {width:5},   // A: Jam Ke
+    {width:8},   // B: Jam Operasi
+    {width:isVis?10:8},   // C: Suhu Standart
+    {width:8},   // D: Suhu Realisasi
+    {width:7},   // E: Berat Kg/Blek
+    {width:7},   // F: Diperiksa
+    {width:14},  // G: Petugas Shif
+    {width:10},  // H: Pengawas
+    {width:10}   // I: Catatan
+  ];
+
+  // Helper border
+  function bdrAll(){ return {top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}; }
+  function bdrMed(){ return {top:{style:'medium'},left:{style:'medium'},bottom:{style:'medium'},right:{style:'medium'}}; }
+  function bdr(l,r,t,b){
+    var o={};
+    if(l) o.left  ={style:l};
+    if(r) o.right ={style:r};
+    if(t) o.top   ={style:t};
+    if(b) o.bottom={style:b};
+    return o;
+  }
+
+  // Helper set cell
+  function sc(ws,row,col,val,opts){
+    var cell=ws.getCell(row,col);
+    cell.value=val!==undefined?val:'';
+    if(!opts) return cell;
+    if(opts.bold||opts.sz||opts.name){
+      cell.font={bold:!!opts.bold,size:opts.sz||8,name:opts.name||'Arial'};
+    }
+    if(opts.align){
+      cell.alignment={horizontal:opts.align,vertical:'middle',wrapText:!!opts.wrap};
+    }
+    if(opts.border) cell.border=opts.border;
+    return cell;
+  }
+
+  // Helper merge
+  function mg(ws,r1,c1,r2,c2,val,opts){
+    ws.mergeCells(r1,c1,r2,c2);
+    return sc(ws,r1,c1,val,opts);
+  }
+
+  var FA={bold:true,sz:11,name:'Arial',align:'center',wrap:true,border:bdrAll()};
+  var FB={bold:true,sz:10,name:'Arial',align:'center',border:bdrAll()};
+  var FBL={bold:true,sz:10,name:'Arial',align:'left',border:bdrAll()};
+  var FC={bold:true,sz:8,name:'Arial',align:'center',wrap:true,border:bdrAll()};
+  var FD={sz:8,name:'Arial',align:'center',border:bdrAll()};
+  var FDL={sz:8,name:'Arial',align:'left',border:bdrAll()};
+  var FE={sz:7,name:'Arial',align:'left',border:bdrAll()};
+  var FF={bold:true,sz:8,name:'Arial',align:'right',border:bdr('thin','medium','thin','thin')};
+
+  // Row heights
+  ws.getRow(1).height=52;   // Kop judul - dinaikkan agar logo tidak menutupi
+  ws.getRow(2).height=20;
+  ws.getRow(3).height=20;
+  ws.getRow(4).height=20;
+  for(var r=5;r<=10;r++) ws.getRow(r).height=20;  // Info form - lebih lapang
+  ws.getRow(11).height=40;  // Header tabel row 1 - diperbesar supaya "Suhu Udara Biji Kopi (°C)" tidak terpotong
+  ws.getRow(12).height=34;  // Header tabel row 2
+  for(var r=13;r<=39;r++) ws.getRow(r).height=18; // Data jam 1-27
+  ws.getRow(40).height=14;  // FORM-XIII
+  ws.getRow(41).height=18;  // TTD label
+  ws.getRow(42).height=40;  // TTD spasi tanda tangan
+  ws.getRow(43).height=18;  // TTD nama
+
+  // ── KOP ──
+  mg(ws,1,1,1,6,'SISTEM MANAJEMEN\nPT PERKEBUNAN NUSANTARA I',FA);
+  mg(ws,2,1,2,6,'Formulir',FB);
+  mg(ws,3,1,3,6,'Judul  :  Formulir Pengeringan Mekanis — '+mesinLabel,FBL);
+
+  // Border kop kiri-kanan medium
+  ws.getCell(1,1).border=bdr('medium','thin','medium','thin');
+  ws.getCell(4,1).border=bdr('medium','thin','thin','medium');
+
+  var infoDok=[
+    [1,'No. Dokumen   : FM-PTPN1-B02-012'],
+    [2,'No. Revisi         : 00'],
+    [3,'Tanggal Terbit  : 29 Februari 2024'],
+    [4,'Halaman           : 1 dari 1']
+  ];
+  infoDok.forEach(function(d){
+    mg(ws,d[0],7,d[0],9,d[1],FE);
+  });
+  // Border kanan medium untuk info dok
+  [1,2,3,4].forEach(function(r){
+    ws.getCell(r,9).border=bdr('thin','medium',r===1?'medium':'thin',r===4?'medium':'thin');
+  });
+
+  // ── INFO FORM ──
+  var infoRows=[
+    ['Pengeringan :',namaAlat,'No. :',mesin,'Pengeringan Ke :','',''],
+    ['Hasil Petik Tgl :','','','','Jumlah Gld :','','Kg'],
+    ['Jenis Kopi :','Robusta','','','Jumlah HS Kering :','','Kg'],
+    ['Dikeringkan Tgl :',fmtTglXL(tgl1),'Jam :','',w1,'Kadar Air :','%'],
+    ['Turun Pengeringan Tgl :',fmtTglXL(tgl2),'Jam :','',w2,'Pemakaian Bahan Bakar :','M³'],
+    ['Lama Pengeringan :',lama,'','','','','']
+  ];
+
+  // Border outline-only untuk blok info form (hanya garis luar, tanpa garis antar kolom/baris)
+  function bdrInfoOutline(r,isLeft,isRight){
+    var o={};
+    if(r===5) o.top={style:'medium'};
+    if(r===10) o.bottom={style:'medium'};
+    if(isLeft) o.left={style:'medium'};
+    if(isRight) o.right={style:'medium'};
+    return o;
+  }
+  var FDnb  ={sz:8,name:'Arial',align:'center'};
+  var FDLnb ={sz:8,name:'Arial',align:'left'};
+
+  infoRows.forEach(function(row,i){
+    var r=5+i;
+    // A:B = label kiri
+    mg(ws,r,1,r,2,row[0],FDLnb);
+    ws.getCell(r,1).border=bdrInfoOutline(r,true,false);
+    ws.getCell(r,2).border=bdrInfoOutline(r,false,false);
+    // C = value kiri
+    sc(ws,r,3,row[1],FDnb);
+    ws.getCell(r,3).border=bdrInfoOutline(r,false,false);
+    // D = label tengah (Jam :)
+    sc(ws,r,4,row[2],FDLnb);
+    ws.getCell(r,4).border=bdrInfoOutline(r,false,false);
+    // E = value tengah (jam)
+    sc(ws,r,5,i===3?w1:i===4?w2:row[3],FDnb);
+    ws.getCell(r,5).border=bdrInfoOutline(r,false,false);
+    // F = kosong (spacer)
+    sc(ws,r,6,'',{sz:8});
+    ws.getCell(r,6).border=bdrInfoOutline(r,false,false);
+    // G = label kanan (rata kiri) - Pengeringan Ke, Jumlah Gld, dll
+    sc(ws,r,7,row[4],FDLnb);
+    ws.getCell(r,7).border=bdrInfoOutline(r,false,false);
+    // H = value kanan (input operator, kosong)
+    sc(ws,r,8,'',{sz:8});
+    ws.getCell(r,8).border=bdrInfoOutline(r,false,false);
+    // I = satuan (Kg, %, M³)
+    sc(ws,r,9,row[6],FDLnb);
+    ws.getCell(r,9).border=bdrInfoOutline(r,false,true);
+  });
+  sc(ws,10,9,'FORM-XIII',FF);
+  ws.getCell(10,9).border=bdrInfoOutline(10,false,true);
+
+  // ── HEADER TABEL ──
+  mg(ws,11,1,12,1,'Jam\nKe',FC);
+  ws.getCell(11,1).border=bdr('medium','thin','medium','medium');
+  ws.getCell(12,1).border=bdr('medium','thin','thin','medium');
+
+  mg(ws,11,2,12,2,'Jam\nOperasi',FC);
+  mg(ws,11,3,11,4,'Suhu Udara\nBiji Kopi (°C)',FC);
+  mg(ws,11,5,12,5,'Berat\nKg/Blek\n(KA)',FC);
+  mg(ws,11,6,12,6,'Diperiksa\npada\njam',FC);
+  mg(ws,11,7,11,8,'Nama',FC);
+  mg(ws,11,9,12,9,'Catatan',FC);
+  ws.getCell(11,9).border=bdr('thin','medium','medium','medium');
+  ws.getCell(12,9).border=bdr('thin','medium','thin','medium');
+  sc(ws,12,3,'Standart',FC);
+  sc(ws,12,4,'Realisasi',FC);
+  sc(ws,12,7,'Petugas\nShif',FC);
+  sc(ws,12,8,'Pengawas',FC);
+
+  // ── DATA PER JAM ──
+  for(var j=1;j<=27;j++){
+    var r=12+j;
+    var b=best[j];
+    var stdV=STD_SUHU_XL[j];
+    sc(ws,r,1,j,FD);
+    ws.getCell(r,1).border=bdr('medium','thin','thin','thin');
+    sc(ws,r,2,b?b.wkt:'',FD);
+    sc(ws,r,3,stdV!==null&&stdV!==undefined?stdV:'-',FD);
+    sc(ws,r,4,b?b.mVal:'',FD);
+    sc(ws,r,5,'',FD);
+    sc(ws,r,6,b?b.wkt:'',FD);
+    sc(ws,r,7,'',FD);
+    sc(ws,r,8,'',FD);
+    sc(ws,r,9,'',FDL);
+    ws.getCell(r,9).border=bdr('thin','medium','thin','thin');
+  }
+
+  // ── TTD ──
+  var ttd=[
+    ['Mengetahui/menyetujui\nManajer',NAMA_MANAJER,1,3],
+    ['Asstekpol',NAMA_ASSTEKPOL,4,6],
+    ['Pabrik,……………….\nPetugas','',7,9]
+  ];
+  ttd.forEach(function(t){
+    mg(ws,41,t[2],41,t[3],t[0],{sz:8,name:'Arial',align:'center',wrap:true,border:bdrAll()});
+    mg(ws,42,t[2],42,t[3],'',{sz:8,border:bdrAll()});
+    mg(ws,43,t[2],43,t[3],'('+(t[1]||'………………………')+')',{sz:8,name:'Arial',align:'center',border:bdrAll()});
+  });
+  [41,42,43].forEach(function(r){
+    ws.getCell(r,1).border=bdr('medium','thin','thin',r===43?'medium':'thin');
+    ws.getCell(r,9).border=bdr('thin','medium','thin',r===43?'medium':'thin');
+  });
+
+  // ── Logo ──
+  var logoId=wb.addImage({base64:PTPN1_LOGO_B64,extension:'png'});
+  ws.addImage(logoId,{tl:{col:0,row:0},ext:{width:48,height:33}});
+
+  // ── Print setup ──
+  ws.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:1,
+    margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0,footer:0}};
+
+  // ── Download ──
+  const tglLabel=tgl1===tgl2?fmtTglXL(tgl1):fmtTglXL(tgl1)+'_sd_'+fmtTglXL(tgl2);
+  wb.xlsx.writeBuffer().then(function(buf){
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='Form_Pengeringan_Mekanis_'+(isVis?'VIS':'Mason')+mesin+'_'+tglLabel+'.xlsx';
+    a.click(); URL.revokeObjectURL(url);
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }).catch(function(err){
+    alert('Gagal generate Excel: '+err.message);
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  MODE ALAT: MASON DRYER / VIS DRYER (satu dashboard)
+//  VIS memakai standar suhu Mason (STD) hanya sebagai ACUAN POLA.
+//  Tidak ada perhitungan selisih (Δ) terhadap standar untuk VIS —
+//  yang dianalisa adalah TREN kenaikan/penurunan suhu vs tren standar.
+// ══════════════════════════════════════════════════════════════
+const VIS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbyNFWsf93_XIk13q24AjGph674x5rFROMdfWAm_x8TvlwcRFLp32kakq8hV_w4aB7eL/exec';
+const VIS_BATAS_ON = 40;      // dipakai hanya jika kolom status tidak ada / tidak terbaca
+const TH_TREN = 1.5;          // °C/jam — di bawah ini dianggap "stabil"
+const MAX_STD = Math.max.apply(null, STD.map(s=>s.s).filter(v=>v!==null));
+const TAHAP_V = [
+  {id:'naik',   nama:'Kenaikan suhu awal',        j:[1,3]},
+  {id:'puncak', nama:'Fase utama (stabil)',       j:[3,8]},
+  {id:'turun',  nama:'Penurunan & pendinginan',   j:[9,24]}
+];
+let modeAlat = 'mason';
+let visAll = {}, visChart1 = null, visChart2 = null, sedangMuatV = false;
+const statusTab = {mason:null, vis:null};
+
+// ── GANTI TAB MASON / VIS ────────────────────────────────────
+function setMode(m){
+  if(m===modeAlat) return;
+  statusTab[modeAlat] = {cls:document.getElementById('dot').className, txt:document.getElementById('stxt').textContent};
+  modeAlat = m;
+  try{ localStorage.setItem('dash_mode', m); }catch(e){}
+  applyMode();
+  if(m==='vis'){
+    if(Object.keys(visAll).length) gantiV(); else muatVIS();
+  } else {
+    if(Object.keys(allData).length) ganti(); else muat();
+  }
+}
+function applyMode(){
+  const v = modeAlat==='vis';
+  document.getElementById('mason-view').style.display = v ? 'none' : '';
+  document.getElementById('vis-view').style.display   = v ? '' : 'none';
+  document.getElementById('tab-mason').classList.toggle('on', !v);
+  document.getElementById('tab-vis').classList.toggle('on', v);
+  document.querySelectorAll('.m-only').forEach(el=>{ el.style.display = v ? 'none' : ''; });
+  const st = statusTab[modeAlat];
+  if(st){ document.getElementById('dot').className = st.cls; document.getElementById('stxt').textContent = st.txt; }
+  document.getElementById('alat-badge').style.display = 'none';
+  const sr = document.getElementById('sel-ref'), srv = document.getElementById('sel-ref-v');
+  if(sr && srv) srv.value = sr.value;
+}
+function refVChange(){
+  const sr = document.getElementById('sel-ref');
+  sr.value = document.getElementById('sel-ref-v').value;
+  aturRefresh();
+}
+
+// ── URL VIS ──────────────────────────────────────────────────
+const VIS_REF = (typeof db!=='undefined' && db) ? db.ref('config/apps_script_url_vis') : null;
+function modeDisplayV(url){
+  const short = url.length>50 ? url.slice(0,47)+'…' : url;
+  const d = document.getElementById('url-display-v');
+  d.textContent = short; d.title = url; d.style.display = 'block';
+  document.getElementById('iurl-vis').style.display = 'none';
+  document.getElementById('btn-simpan-v').style.display = 'none';
+  document.getElementById('btn-ubah-v').style.display = 'inline-block';
+}
+function ubahURLV(){
+  const i = document.getElementById('iurl-vis');
+  i.value = document.getElementById('url-display-v').title || i.value;
+  document.getElementById('url-display-v').style.display = 'none';
+  i.style.display = 'block';
+  document.getElementById('btn-simpan-v').style.display = 'inline-block';
+  document.getElementById('btn-ubah-v').style.display = 'none';
+  i.focus();
+}
+function simpanURLV(){
+  const url = document.getElementById('iurl-vis').value.trim();
+  if(!url.includes('script.google.com/macros')){ alert('URL tidak valid. Gunakan URL Apps Script VIS Dryer: https://script.google.com/macros/s/.../exec'); return; }
+  try{ localStorage.setItem('dash_url_vis', url); }catch(e){}
+  if(VIS_REF){ VIS_REF.set(url).catch(function(){}); }
+  modeDisplayV(url);
+  muatVIS();
+}
+
+// ── PARSE DATA VIS ───────────────────────────────────────────
+// Kolom dibaca dari header (Tanggal, Waktu, VIS1, VIS2, Status1, Status2).
+// Jika header tidak dikenali, dipakai urutan kolom standar 0..5.
+function parseTglWktV(rawTgl, rawWkt){
+  const wktStr = String(rawWkt==null?'':rawWkt).trim();
+  const tglStr = String(rawTgl==null?'':rawTgl).trim();
+  let tgl='', wkt='';
+  if(wktStr.includes('T') || tglStr.includes('T')){
+    tgl = parseTgl(rawTgl);
+    wkt = parseWkt(rawWkt);
+    if(wktStr.includes('1899-12-29')){
+      const utcH = new Date(wktStr).getUTCHours();
+      if(utcH < 17){
+        const d = new Date(tgl+'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate()-1);
+        tgl = d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+      }
+    }
+  } else {
+    const dm = tglStr.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);   // 24/11/2026
+    tgl = dm ? dm[3]+'-'+p2(dm[2])+'-'+p2(dm[1]) : tglStr.slice(0,10);
+    const m = wktStr.match(/^(\d{1,2}):(\d{2})/);
+    wkt = m ? p2(m[1])+':'+p2(m[2]) : '00:00';
+  }
+  if(!tgl || tgl.length<10) return null;
+  return {tgl:tgl, wkt:wkt};
+}
+function suhuV(x){
+  if(x===null || x===undefined || x==='') return null;
+  const v = parseFloat(String(x).replace(',','.'));
+  return (isFinite(v) && v>-50 && v<1000) ? v : null;   // -999 / NaN / ERR dari sensor = tidak valid
+}
+function parseVIS(json){
+  if(!Array.isArray(json) || !json.length) return [];
+  const first = json[0] || [];
+  const adaHeader = !/^\d/.test(String(first[0]==null?'':first[0]).trim());
+  let iA=0, iB=1, iT1=2, iT2=3, iS1=4, iS2=5;
+  if(adaHeader){
+    const nh = first.map(h=>String(h).trim().toLowerCase().replace(/[\s_\-()°.]/g,''));
+    const f = fn => nh.findIndex(fn);
+    const a = f(h=>h.includes('tanggal')||h==='date');           if(a>=0) iA=a;
+    const b = f(h=>h.includes('waktu')||h==='time'||h==='jam');  if(b>=0) iB=b;
+    const t1 = f(h=>!h.includes('status') && /^(vis|v|suhu|temp|ch|channel)1/.test(h)); if(t1>=0) iT1=t1;
+    const t2 = f(h=>!h.includes('status') && /^(vis|v|suhu|temp|ch|channel)2/.test(h)); if(t2>=0) iT2=t2;
+    const s1 = f(h=>h.includes('status') && h.includes('1'));    if(s1>=0) iS1=s1;
+    const s2 = f(h=>h.includes('status') && h.includes('2'));    if(s2>=0) iS2=s2;
+  }
+  const rows = [];
+  for(let i=adaHeader?1:0; i<json.length; i++){
+    const row = json[i];
+    if(!Array.isArray(row)) continue;
+    const tw = parseTglWktV(row[iA], row[iB]);
+    if(!tw) continue;
+    const v1 = suhuV(row[iT1]), v2 = suhuV(row[iT2]);
+    const st = (raw, v) => {
+      const s = String(raw==null?'':raw).replace(/[^A-Za-z]/g,'').toUpperCase();
+      if(s==='ON' || s==='OFF') return s;
+      return (v!==null && v>=VIS_BATAS_ON) ? 'ON' : 'OFF';
+    };
+    rows.push({waktu:tw.tgl+' '+tw.wkt, tgl:tw.tgl, wkt:tw.wkt, v1:v1, v2:v2, s1:st(row[iS1],v1), s2:st(row[iS2],v2)});
+  }
+  return rows;
+}
+
+// ── MUAT DATA VIS ────────────────────────────────────────────
+async function muatVIS(){
+  if(sedangMuatV) return;
+  sedangMuatV = true;
+  const btnMuat = document.querySelector('button[onclick="muat()"]');
+  const teksAsli = btnMuat ? btnMuat.textContent : '';
+  if(btnMuat){ btnMuat.disabled = true; btnMuat.textContent = '⏳ Memuat...'; }
+  const dot = document.getElementById('dot'), stxt = document.getElementById('stxt');
+  const errBox = document.getElementById('verr');
+  errBox.style.display = 'none';
+  try{
+    const url = (document.getElementById('iurl-vis').value || document.getElementById('url-display-v').title || '').trim();
+    stxt.textContent = 'Memuat VIS Dryer...'; dot.className = 'dot';
+    if(!url.includes('script.google.com/macros')) throw new Error('URL Apps Script VIS Dryer belum valid. Klik Ubah lalu isi URL deployment VIS Dryer.');
+    const fetchUrl = url + (url.includes('?')?'&':'?') + 'action=getData' + (historyMode ? '&history=1' : '');
+    const res = await fetchWithRetry(fetchUrl, 3, 1500);
+    const txt = await res.text();
+    let json;
+    try{ json = JSON.parse(txt); }catch(e){ throw new Error('Respons bukan JSON. Pastikan Code.gs VIS Dryer versi terbaru (v4, action=getData) sudah di-deploy sebagai versi baru.'); }
+    if(!Array.isArray(json) && json && Array.isArray(json.data)) json = json.data;
+    if(!Array.isArray(json)) throw new Error('Format JSON VIS tidak sesuai (bukan array).');
+    const rows = parseVIS(json);
+    if(!rows.length) throw new Error('Data VIS diambil ('+json.length+' baris) tapi 0 baris valid. Cek kolom: Tanggal, Waktu, VIS1, VIS2, Status1, Status2.');
+    visAll = grupBySesi(rows);
+    const keys = Object.keys(visAll);
+    isiDropdownV(keys);
+    dot.className = 'dot live';
+    stxt.textContent = 'VIS · '+(historyMode?'Riwayat lengkap · ':'Terhubung · ')+rows.length+' pembacaan · '+keys.length+' sesi';
+    gantiV();
+  }catch(e){
+    dot.className = 'dot err';
+    stxt.textContent = 'VIS gagal dimuat';
+    document.getElementById('verr-msg').textContent = e.message;
+    errBox.style.display = 'flex';
+    if(!Object.keys(visAll).length) gantiV();
+  }finally{
+    sedangMuatV = false;
+    if(btnMuat){ btnMuat.disabled = false; btnMuat.textContent = teksAsli || '↺ Muat ulang'; }
+  }
+}
+
+function isiDropdownV(keys){
+  const sel = document.getElementById('sel-vtgl');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  [...keys].sort().reverse().forEach(k=>{
+    const o = document.createElement('option');
+    o.value = k;
+    const rows = visAll[k] || [];
+    const dates = [...new Set(rows.map(r=>r.tgl))].sort();
+    const jamMulai = rows.length ? rows[0].wkt.slice(0,5) : '';
+    o.textContent = dates.length>1
+      ? '★ '+fmtTgl(dates[0])+' → '+fmtTgl(dates[dates.length-1])+' (mulai '+jamMulai+')'
+      : fmtTgl(dates[0])+(jamMulai?' (mulai '+jamMulai+')':'');
+    sel.appendChild(o);
+  });
+  if(prev && keys.includes(prev)) sel.value = prev;
+}
+function rowsV(){
+  const key = document.getElementById('sel-vtgl').value;
+  return (visAll[key] || []).slice();
+}
+function gantiV(){
+  const rows = rowsV();
+  buatGrafikV(rows);
+  updateMetricsV(rows);
+  renderLogV(rows);
+  renderTrenV(rows);
+}
+
+// ── FUNGSI TREN (murni, tanpa DOM) ───────────────────────────
+function regSlope(xs, ys){
+  const n = xs.length; if(n<2) return null;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let sxx=0, sxy=0;
+  for(let i=0;i<n;i++){ sxx += (xs[i]-mx)*(xs[i]-mx); sxy += (xs[i]-mx)*(ys[i]-my); }
+  return sxx===0 ? null : sxy/sxx;
+}
+function pearson(xs, ys){
+  const n = xs.length; if(n<4) return null;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let sxx=0, syy=0, sxy=0;
+  for(let i=0;i<n;i++){ const dx=xs[i]-mx, dy=ys[i]-my; sxx+=dx*dx; syy+=dy*dy; sxy+=dx*dy; }
+  return (sxx===0||syy===0) ? null : sxy/Math.sqrt(sxx*syy);
+}
+function arahTren(s){ if(s===null||s===undefined) return null; return s>TH_TREN?'naik':(s<-TH_TREN?'turun':'stabil'); }
+function fmtLaju(l){
+  if(l===null||l===undefined) return '—';
+  const v = Math.round(l*10)/10;
+  const a = arahTren(l);
+  const tanda = a==='naik' ? '▲ ' : a==='turun' ? '▼ ' : '► ';
+  return tanda+(v>0?'+':'')+v+' °C/jam';
+}
+function warnaLaju(l){ const a=arahTren(l); return a==='naik'?'#A32D2D':a==='turun'?'#185FA5':'#5f5e5a'; }
+
+// Laju perubahan suhu (°C/jam) pada baris ke-i, dibanding pembacaan ±1 jam sebelumnya
+function lajuRow(rows, i, k){
+  const fv='v'+k, fs='s'+k, r=rows[i];
+  if(!r || r[fs]!=='ON' || r[fv]===null || r[fv]===undefined) return null;
+  const t = new Date(r.waktu).getTime();
+  for(let j=i-1;j>=0;j--){
+    const dt = (t - new Date(rows[j].waktu).getTime())/60000;
+    if(dt>120) return null;
+    if(dt>=40){
+      const p = rows[j];
+      if(p[fs]!=='ON' || p[fv]===null || p[fv]===undefined) return null;
+      return (r[fv]-p[fv])/(dt/60);
+    }
+  }
+  return null;
+}
+function stdSlopeTahap(a, b){
+  const xs=[], ys=[];
+  for(let j=a;j<=b;j++){ const s=getStd(j); if(s!==null){ xs.push(j-0.5); ys.push(s); } }
+  return regSlope(xs, ys);
+}
+function evalTahapV(t){
+  if(t.slopeVis===null) return t.n ? 'Data belum cukup' : 'Belum sampai tahap ini';
+  if(t.arahStd!==t.arahVis) return 'Tidak searah dengan standar';
+  if(t.arahStd==='stabil') return 'Sejalan dengan standar (stabil)';
+  const kata = t.arahStd;
+  if(t.rel===null) return 'Searah dengan standar';
+  if(t.rel<60)  return 'Searah, '+kata+' lebih lambat dari standar';
+  if(t.rel>140) return 'Searah, '+kata+' lebih cepat dari standar';
+  return 'Sejalan dengan standar';
+}
+function warnaEvalV(ev){
+  if(ev.indexOf('Sejalan')===0) return '#27500A';
+  if(ev.indexOf('Searah')===0) return '#633806';
+  if(ev.indexOf('Tidak searah')===0) return '#791F1F';
+  return '#888780';
+}
+// Hasil analisa tren satu kanal (k = 1 atau 2) untuk satu sesi
+function hitungTrenV(rows, k){
+  const fv='v'+k, fs='s'+k, fj='jam'+k;
+  const on = rows.filter(r=>r[fs]==='ON' && r[fv]!==null && r[fv]!==undefined && r[fj]!==null && r[fj]!==undefined);
+  if(!on.length) return null;
+  const awal = rows.find(r=>r[fj]===1);
+  const t0 = new Date((awal||on[0]).waktu).getTime();
+  const puncak = Math.max.apply(null, on.map(r=>r[fv]));
+  const rPuncak = on.find(r=>r[fv]===puncak);
+  const tahap = TAHAP_V.map(th=>{
+    const sub = on.filter(r=>r[fj]>=th.j[0] && r[fj]<=th.j[1]);
+    const slopeStd = stdSlopeTahap(th.j[0], th.j[1]);
+    let slopeVis = null;
+    if(sub.length>=3){
+      const xs = sub.map(r=>(new Date(r.waktu).getTime()-t0)/3600000);
+      if(Math.max.apply(null,xs)-Math.min.apply(null,xs) >= 0.5) slopeVis = regSlope(xs, sub.map(r=>r[fv]));
+    }
+    let rel = null;
+    if(slopeStd!==null && Math.abs(slopeStd)>=TH_TREN && slopeVis!==null && puncak>0){
+      rel = (slopeVis/puncak)/(slopeStd/MAX_STD)*100;
+    }
+    const t = {id:th.id, nama:th.nama, j:th.j, n:sub.length, slopeStd:slopeStd, slopeVis:slopeVis,
+               arahStd:arahTren(slopeStd), arahVis:arahTren(slopeVis), rel:rel};
+    t.evaluasi = evalTahapV(t);
+    return t;
+  });
+  // Kemiripan pola: korelasi rata-rata per jam VIS vs standar jam yang sama
+  const perJam = {};
+  on.forEach(r=>{ (perJam[r[fj]] = perJam[r[fj]] || []).push(r[fv]); });
+  const xs=[], ys=[];
+  Object.keys(perJam).map(Number).sort((a,b)=>a-b).forEach(j=>{
+    const s = getStd(j); if(s===null) return;
+    xs.push(s); ys.push(perJam[j].reduce((a,b)=>a+b,0)/perJam[j].length);
+  });
+  const r = pearson(xs, ys);
+  let polaTxt = 'Belum cukup data (min. 4 jam)';
+  if(r!==null) polaTxt = r>=0.85?'Sangat mirip':r>=0.6?'Cukup mirip':r>=0.3?'Lemah':'Berbeda';
+  // Jam mencapai 90% suhu puncak (hanya bermakna jika puncak sudah terlewati)
+  const lastOn = on[on.length-1];
+  const lewat = lastOn[fv] <= 0.97*puncak && new Date(lastOn.waktu) > new Date(rPuncak.waktu);
+  let jam90 = null;
+  if(lewat){ const r90 = on.find(x=>x[fv]>=0.9*puncak); jam90 = r90 ? r90[fj] : null; }
+  let jam90Std = null;
+  for(let j=1;j<=24;j++){ const s=getStd(j); if(s!==null && s>=0.9*MAX_STD){ jam90Std=j; break; } }
+  return {tahap:tahap, puncak:puncak, jamPuncak:rPuncak[fj], r:r, polaTxt:polaTxt,
+          jam90:jam90, jam90Std:jam90Std, lewat:lewat};
+}
+
+// ── METRIK VIS ───────────────────────────────────────────────
+function updateMetricsV(rows){
+  const set = (id, t) => { document.getElementById(id).textContent = t; };
+  if(!rows.length){
+    ['vtgl','v1-jam','v2-jam','v1v','v2v','vtot','vdur'].forEach(id=>set(id,'—'));
+    ['v1-std','v2-std','v1tren','v2tren','v1max','v2max'].forEach(id=>set(id,'—'));
+    document.getElementById('alat-badge').style.display='none';
+    return;
+  }
+  const last = rows[rows.length-1];
+  const key = document.getElementById('sel-vtgl').value;
+  const dates = [...new Set((visAll[key]||[]).map(r=>r.tgl))];
+  set('vtgl', dates.length>1 ? fmtTgl(dates[0])+' – '+fmtTgl(dates[dates.length-1]) : fmtTgl(key));
+  [1,2].forEach(k=>{
+    const jam = last['jam'+k], v = last['v'+k], s = jam!=null ? getStd(jam) : null;
+    set('v'+k+'-jam', jam!=null ? jam : '—');
+    set('v'+k+'-std', 'Acuan Mason: '+(s!==null ? s+'°C' : (jam==null ? 'Belum ON' : 'Udara segar')));
+    set('v'+k+'v', v!=null ? rnd(v) : '—');
+    const l = lajuRow(rows, rows.length-1, k);
+    const el = document.getElementById('v'+k+'tren');
+    el.textContent = 'Tren 1 jam: '+fmtLaju(l);
+    el.style.color = warnaLaju(l);
+    const on = rows.filter(r=>r['s'+k]==='ON' && r['v'+k]!=null);
+    if(on.length){
+      const mx = Math.max.apply(null, on.map(r=>r['v'+k]));
+      const rm = on.find(r=>r['v'+k]===mx);
+      set('v'+k+'max', 'Maks: '+rnd(mx)+'°C (Jam '+(rm['jam'+k]!=null?rm['jam'+k]:'—')+')');
+    } else set('v'+k+'max', 'Maks: —');
+  });
+  set('vtot', rows.length);
+  const dur = Math.round((new Date(rows[rows.length-1].waktu)-new Date(rows[0].waktu))/36e5*10)/10;
+  set('vdur', isNaN(dur) ? '—' : dur+' jam');
+
+  // Status alat (header)
+  const menitSejak = (Date.now() - new Date(last.waktu).getTime())/60000;
+  const ab = document.getElementById('alat-badge');
+  ab.style.display = 'inline-block'; ab.style.border = 'none'; ab.style.borderRadius = '12px';
+  const lupd = document.getElementById('lupd');
+  lupd.textContent = menitSejak<1 ? 'Update: baru saja' : menitSejak<60 ? 'Data terakhir: '+Math.round(menitSejak)+' mnt lalu' : 'Data terakhir: '+Math.round(menitSejak/60*10)/10+' jam lalu';
+  const lbl = '· Terakhir: '+fmtTgl(last.waktu.slice(0,10))+' '+last.waktu.slice(11,16);
+  if(menitSejak>30){
+    ab.textContent = 'Alat: OFF '+lbl; ab.style.background='#f5f4f0'; ab.style.color='#888780'; ab.style.border='1px solid #d3d1c7';
+  } else {
+    const o1 = last.s1==='ON', o2 = last.s2==='ON';
+    ab.textContent = (o1&&o2) ? 'VIS 1 & 2: ON' : o1 ? 'VIS 1: ON | VIS 2: OFF' : o2 ? 'VIS 1: OFF | VIS 2: ON' : 'Alat: OFF';
+    ab.style.background = (o1||o2) ? '#EAF3DE' : '#f5f4f0';
+    ab.style.color = (o1||o2) ? '#27500A' : '#888780';
+  }
+}
+
+// ── GRAFIK VIS ───────────────────────────────────────────────
+function buatGrafikV(rows){
+  if(visChart1){ visChart1.destroy(); visChart1=null; }
+  if(visChart2){ visChart2.destroy(); visChart2=null; }
+  if(!rows.length) return;
+  const pola = document.getElementById('sel-vmode').value === 'pola';
+  const labels = buildLabels(rows);
+  const warna = {1:'#7C3AED', 2:'#0E7490'};
+  const bg    = {1:'rgba(124,58,237,0.08)', 2:'rgba(14,116,144,0.08)'};
+  const scaleX = {ticks:{font:{size:10},color:'#888780',autoSkip:true,maxRotation:45,maxTicksLimit:20}, grid:{color:'rgba(0,0,0,0.05)'}};
+  const scaleY = pola
+    ? {min:0, max:110, ticks:{font:{size:10},color:'#888780',callback:function(v){return v+'%';}}, grid:{color:'rgba(0,0,0,0.06)'},
+       title:{display:true,text:'% terhadap suhu puncak masing-masing',font:{size:10},color:'#888780'}}
+    : {min:20, max:140, ticks:{font:{size:10},color:'#888780',callback:function(v){return v+'°C';}}, grid:{color:'rgba(0,0,0,0.06)'},
+       title:{display:true,text:'Suhu (°C)',font:{size:10},color:'#888780'}};
+  const unit = pola ? '%' : '°C';
+  const ttip = {
+    callbacks:{
+      title:function(items){ const r=rows[items[0].dataIndex]; return r?r.waktu:''; },
+      label:function(c){ if(c.dataset.label==='Maks') return null; return c.dataset.label+': '+(c.parsed.y!==null?rnd(c.parsed.y)+unit:'OFF'); }
+    },
+    filter:function(i){ return i.dataset.label!=='Maks'; }
+  };
+  [1,2].forEach(k=>{
+    const on = rows.filter(r=>r['s'+k]==='ON' && r['v'+k]!=null).map(r=>r['v'+k]);
+    const mx = on.length ? Math.max.apply(null,on) : 0;
+    const std = rows.map(r=>{ const s=getStd(r['jam'+k]); return s===null?null:(pola? s/MAX_STD*100 : s); });
+    const val = rows.map(r=>{
+      if(r['s'+k]!=='ON' || r['v'+k]==null) return null;
+      return pola ? (mx>0 ? r['v'+k]/mx*100 : null) : r['v'+k];
+    });
+    const ds = [
+      {label:'Standar Mason', data:std, borderColor:'#185FA5', borderWidth:2, pointRadius:0, tension:0.3, fill:false},
+      {label:'VIS '+k, data:val, borderColor:warna[k], backgroundColor:bg[k], borderWidth:2.5, pointRadius:0, tension:0.2, fill:true, spanGaps:false}
+    ];
+    if(!pola) ds.push(maxDS(mx, rows.length, '#E24B4A'));
+    const ch = new Chart(document.getElementById('cv'+k), {
+      type:'line', data:{labels:labels, datasets:ds},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:ttip}, scales:{x:scaleX, y:scaleY}}
+    });
+    if(k===1) visChart1 = ch; else visChart2 = ch;
+  });
+}
+
+// ── LOG VIS (tanpa kolom selisih) ────────────────────────────
+function renderLogV(rows){
+  const tbody = document.getElementById('vlog-body');
+  tbody.innerHTML = '';
+  let prevTgl=null, offCount=0;
+  const flushOff = ()=>{
+    if(offCount>0){
+      tbody.insertAdjacentHTML('beforeend','<tr style="background:#fafaf8;"><td colspan="10" style="font-size:11px;color:#888780;padding:4px 10px;font-style:italic;">— '+offCount+' pembacaan saat Alat OFF —</td></tr>');
+      offCount=0;
+    }
+  };
+  rows.forEach((r,i)=>{
+    const anyOn = r.s1==='ON' || r.s2==='ON';
+    if(prevTgl && r.tgl!==prevTgl){ flushOff(); tbody.insertAdjacentHTML('beforeend','<tr class="cd-row"><td colspan="10">▶ Pergantian hari — '+fmtTgl(r.tgl)+'</td></tr>'); }
+    prevTgl = r.tgl;
+    if(!anyOn){ offCount++; return; }
+    flushOff();
+    const f1 = r.jam1!=null ? getFase(r.jam1) : null, f2 = r.jam2!=null ? getFase(r.jam2) : null;
+    const fase = (f1&&f2&&f1.fase!==f2.fase) ? 'V1:'+f1.fase+' · V2:'+f2.fase : (f1?f1.fase:(f2?f2.fase:'—'));
+    const cell = k => {
+      const on = r['s'+k]==='ON' && r['v'+k]!=null;
+      const l = on ? lajuRow(rows, i, k) : null;
+      return '<td class="tr">'+(on && r['jam'+k]!=null ? r['jam'+k] : '—')+'</td>'
+           + '<td class="tr">'+(r['v'+k]!=null ? rnd(r['v'+k]) : '—')+'</td>'
+           + '<td class="tr" style="color:'+warnaLaju(l)+'">'+fmtLaju(l)+'</td>';
+    };
+    tbody.insertAdjacentHTML('beforeend','<tr><td>'+r.wkt+'</td>'+cell(1)+cell(2)
+      +'<td><span class="badge '+(r.s1==='ON'?'b-on':'b-off')+'">'+r.s1+'</span></td>'
+      +'<td><span class="badge '+(r.s2==='ON'?'b-on':'b-off')+'">'+r.s2+'</span></td>'
+      +'<td><span class="badge b-gray">'+fase+'</span></td></tr>');
+  });
+  flushOff();
+  if(!tbody.innerHTML) tbody.innerHTML = '<tr><td colspan="10" style="color:#888780;font-style:italic;padding:10px;">Belum ada pembacaan saat ON pada sesi ini.</td></tr>';
+}
+
+// ── ANALISA TREN VIS ─────────────────────────────────────────
+function renderTrenV(rows){
+  const el = document.getElementById('vtren-content');
+  const t1 = hitungTrenV(rows,1), t2 = hitungTrenV(rows,2);
+  if(!t1 && !t2){
+    el.innerHTML = '<div style="color:#888780;font-style:italic;">Belum ada pembacaan saat ON pada sesi ini, analisa tren belum bisa dihitung.</div>';
+    return;
+  }
+  const td = 'padding:4px 8px;border-bottom:1px solid #f0ede8;';
+  const th = 'padding:4px 8px;font-size:10px;border-bottom:1px solid #e0ded8;';
+  const last = rows[rows.length-1];
+  const rowRingkas = (lbl, f1, f2, ket) => '<tr><td style="'+td+'">'+lbl+'</td><td style="'+td+'text-align:center;">'+f1+'</td><td style="'+td+'text-align:center;">'+f2+'</td><td style="'+td+'font-size:11px;color:#5f5e5a;">'+ket+'</td></tr>';
+  const v = (t,fn) => t ? fn(t) : '—';
+  const lajuNow = k => { const l = lajuRow(rows, rows.length-1, k); return '<span style="color:'+warnaLaju(l)+'">'+fmtLaju(l)+'</span>'; };
+  const awalStd = stdSlopeTahap(1,3);
+  let h = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;">'
+    + '<tr style="background:#f5f4f0;"><th style="'+th+'text-align:left;">Parameter tren</th><th style="'+th+'text-align:center;">VIS 1</th><th style="'+th+'text-align:center;">VIS 2</th><th style="'+th+'text-align:left;">Acuan standar Mason</th></tr>';
+  h += rowRingkas('Laju kenaikan awal (Jam 1–3)',
+        v(t1,t=>fmtLaju(t.tahap[0].slopeVis)), v(t2,t=>fmtLaju(t.tahap[0].slopeVis)),
+        'Standar: '+fmtLaju(awalStd));
+  h += rowRingkas('Suhu puncak tercapai',
+        v(t1,t=>rnd(t.puncak)+'°C (Jam '+t.jamPuncak+')'), v(t2,t=>rnd(t.puncak)+'°C (Jam '+t.jamPuncak+')'),
+        'Standar: puncak 120°C pada Jam 3–8');
+  const j90 = t => t.lewat ? (t.jam90!==null ? 'Jam ke-'+t.jam90 : '—') : 'Belum melewati puncak';
+  h += rowRingkas('Jam mencapai 90% suhu puncak', v(t1,j90), v(t2,j90),
+        'Standar: Jam ke-'+(t1?t1.jam90Std:(t2?t2.jam90Std:'—')));
+  const pola = t => t.r===null ? t.polaTxt : t.polaTxt+' (r = '+(Math.round(t.r*100)/100)+')';
+  h += rowRingkas('Kemiripan pola dengan kurva standar', v(t1,pola), v(t2,pola),
+        'Korelasi rata-rata per jam; tidak menilai level suhu');
+  h += rowRingkas('Tren 1 jam terakhir', t1?lajuNow(1):'—', t2?lajuNow(2):'—', 'Dari pembacaan terakhir');
+  h += '</table>';
+
+  h += '<div style="font-weight:600;font-size:11px;margin-bottom:4px;border-bottom:1px solid #e0ded8;padding-bottom:3px;">Tren per tahap pengeringan vs standar</div>';
+  h += '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    + '<tr style="background:#f5f4f0;"><th style="'+th+'text-align:left;">Kanal</th><th style="'+th+'text-align:left;">Tahap</th>'
+    + '<th style="'+th+'text-align:center;">Tren standar</th><th style="'+th+'text-align:center;">Tren VIS</th>'
+    + '<th style="'+th+'text-align:center;">Kecepatan relatif</th><th style="'+th+'text-align:left;">Evaluasi</th></tr>';
+  [[1,t1],[2,t2]].forEach(([k,t])=>{
+    if(!t) return;
+    t.tahap.forEach(x=>{
+      const jl = 'Jam '+x.j[0]+'–'+x.j[1];
+      const stdTxt = x.slopeStd===null ? '—' : fmtLaju(x.slopeStd);
+      h += '<tr><td style="'+td+'font-weight:600;">VIS '+k+'</td>'
+        + '<td style="'+td+'">'+x.nama+'<br><span style="font-size:9px;color:#888780;">'+jl+' · '+x.n+' pembacaan</span></td>'
+        + '<td style="'+td+'text-align:center;">'+stdTxt+'</td>'
+        + '<td style="'+td+'text-align:center;color:'+warnaLaju(x.slopeVis)+';">'+fmtLaju(x.slopeVis)+'</td>'
+        + '<td style="'+td+'text-align:center;">'+(x.rel!==null ? Math.round(x.rel)+'%' : '—')+'</td>'
+        + '<td style="'+td+'font-weight:600;color:'+warnaEvalV(x.evaluasi)+';">'+x.evaluasi+'</td></tr>';
+    });
+  });
+  h += '</table>';
+  h += '<div style="margin-top:8px;padding:8px 12px;background:#f5f4f0;border-radius:5px;font-size:11px;color:#5f5e5a;line-height:1.8;">'
+    + '<strong>Cara membaca:</strong><br>'
+    + '· VIS Dryer belum punya standar sendiri, sehingga kurva standar Mason hanya dipakai sebagai <b>acuan bentuk/arah</b>. Tidak ada penilaian selisih suhu.<br>'
+    + '· Tren = laju perubahan suhu (°C/jam) dari regresi linear pembacaan ON pada tahap tsb. Arah dianggap stabil jika laju ≤ ±'+TH_TREN+' °C/jam.<br>'
+    + '· Kecepatan relatif = laju VIS dibanding laju standar, masing-masing dinormalkan terhadap suhu puncaknya (karena level suhu VIS berbeda dari Mason). 60–140% dianggap sejalan.<br>'
+    + '· Jam ke- dihitung dari awal ON tiap kanal (periode ON terpanjang), sama seperti Mason.'
+    + '</div>';
+  el.innerHTML = h;
+}
+
+// ── INIT MODE & URL VIS ──────────────────────────────────────
+(function(){
+  let savedV = '', savedMode = 'mason';
+  try{ savedV = localStorage.getItem('dash_url_vis') || ''; savedMode = localStorage.getItem('dash_mode') || 'mason'; }catch(e){}
+  const urlV = savedV || VIS_URL_DEFAULT;
+  document.getElementById('iurl-vis').value = urlV;
+  modeDisplayV(urlV);
+  if(VIS_REF){
+    VIS_REF.once('value').then(function(snap){
+      const u = snap.val();
+      if(u && u !== document.getElementById('iurl-vis').value){
+        document.getElementById('iurl-vis').value = u;
+        modeDisplayV(u);
+        if(modeAlat==='vis') muatVIS();
+      }
+    }).catch(function(){});
+  }
+  if(savedMode==='vis'){ modeAlat = 'vis'; applyMode(); }
 })();
+
+
+// ── INIT ─────────────────────────────────────────────────────
+(function(){
+  let saved = '';
+  try{ saved = localStorage.getItem('dash_url') || ''; } catch(e){}
+  if(saved){
+    document.getElementById('iurl').value = saved;
+    modeDisplay(saved);
+  } else {
+    modeEdit();
+  }
+
+  if(!CONFIG_REF){ modeEdit(); muat(); aturRefresh(); return; }
+
+  CONFIG_REF.once('value')
+    .then(function(snapshot){
+      const url = snapshot.val();
+      if(url){
+        document.getElementById('iurl').value = url;
+        modeDisplay(url);
+      } else {
+        modeEdit();
+      }
+      muat();
+    })
+    .catch(function(err){
+      console.error('[Firebase] Gagal load config:', err);
+      try{
+        const saved = localStorage.getItem('dash_url');
+        if(saved){ document.getElementById('iurl').value=saved; modeDisplay(saved); }
+        else { modeEdit(); }
+      } catch(e){ modeEdit(); }
+      muat();
+    });
+
+  if(CONFIG_REF) CONFIG_REF.on('value', function(snapshot){
+    const url = snapshot.val();
+    if(!url) return;
+    const current = document.getElementById('iurl').value || document.getElementById('url-display').title;
+    if(url !== current){
+      document.getElementById('iurl').value = url;
+      modeDisplay(url);
+      muat();
+    }
+  });
+})();
+aturRefresh();
 </script>
-<!-- TOAST NOTIFICATION -->
-<div id="toast" style="
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-  background: #ffffff; border: 1px solid rgba(255,160,50,0.25); box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-  border-radius: 100px; padding: 10px 20px;
-  font-size: 13px; font-weight: 500; color: #f0f2f5;
-  display: flex; align-items: center; gap: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease;
-  opacity: 0; z-index: 999; white-space: nowrap;
-  pointer-events: none;
-"></div>
 </body>
 </html>
